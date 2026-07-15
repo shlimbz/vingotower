@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>날리기 - 발사 비행 게임</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="rotatePrompt">
+  <div class="icon">📱</div>
+  <h2 style="margin:0;">기기를 가로로 돌려주세요</h2>
+  <p>이 게임은 가로 모드에서 플레이하도록 설계되었습니다. 휴대폰을 옆으로 돌려주세요!</p>
+</div>
+<div id="app">
+  <div id="stage">
+    <canvas id="c"></canvas>
+
+    <div id="hud">
+      <div>
+        <div id="distanceReadout" class="hud-box">0<span> m</span></div>
+        <div id="coinReadout" class="hud-box"><span class="coin-dot"></span><span id="coinCount">0</span></div>
+      </div>
+      <div id="speedWrap" class="hud-box">
+        <div id="speedLabel">속도</div>
+        <div id="speedBar"><div id="speedFill"></div></div>
+        <div id="speedNum">100</div>
+      </div>
+      <div class="hud-box" id="zoneLabel">지상</div>
+    </div>
+
+    <audio id="bgmAudio" loop preload="metadata" src="assets/audio/bgm.mp3"></audio>
+    <button id="settingsBtn" title="설정">⚙️</button>
+
+    <div id="slamWrap">
+      <div id="slamLabel">슬램</div>
+      <div id="slamCharges"></div>
+      <div id="slamBar"><div id="slamFill"></div></div>
+    </div>
+
+    <div id="toast"></div>
+
+    <button id="actionBtn">발사!</button>
+
+    <div id="startOverlay">
+      <h1>🚀 날리기</h1>
+      <p>버튼을 눌러 각도를 정하고, 다시 눌러 파워를 채운 뒤 캐릭터를 날려보세요.<br>비행 중 버튼을 누르면 파워 슬램으로 급강하합니다.<br>최대한 멀리, 높이 날아가 랭크를 올려보세요!</p>
+      <button class="bigbtn" id="startBtn">시작하기</button>
+      <button class="bigbtn secondary" id="shopBtnStart">업그레이드 상점</button>
+    </div>
+
+    <div id="resultOverlay" class="hidden">
+      <div class="rank" id="rankText">C</div>
+      <div class="distline"><span id="finalDist">0</span> m</div>
+      <div class="stats">
+        <div>획득 코인<b id="coinsGained">0</b></div>
+        <div>최고 기록<b id="bestDist">0 m</b></div>
+        <div>슬램 사용<b id="slamCount">0</b></div>
+      </div>
+      <div class="rowbtns">
+        <button class="bigbtn" id="retryBtn">다시 발사</button>
+        <button class="bigbtn secondary" id="shopBtnResult">상점</button>
+      </div>
+    </div>
+
+    <div id="shopOverlay" class="hidden">
+      <h2>업그레이드</h2>
+      <div id="bankRow">보유 코인: <span id="bankAmt">0</span></div>
+      <div id="upgradeList"></div>
+      <button class="bigbtn secondary" id="closeShopBtn" style="margin-top:6px;">닫기</button>
+    </div>
+
+    <div id="settingsOverlay" class="hidden">
+      <h2>설정</h2>
+      <div class="settings-row">
+        <span>배경음악</span>
+        <button class="bigbtn secondary small" id="bgmMuteBtn">🔊 켜짐</button>
+      </div>
+      <div class="settings-row">
+        <span>볼륨</span>
+        <input type="range" id="bgmVolume" min="0" max="100" value="40">
+      </div>
+      <div class="rowbtns" style="margin-top:14px;">
+        <button class="bigbtn" id="settingsRetryBtn">다시 시작</button>
+        <button class="bigbtn secondary" id="settingsMenuBtn">메인 메뉴로</button>
+      </div>
+      <button class="bigbtn secondary" id="closeSettingsBtn" style="margin-top:10px;">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/spawn.js"></script>
+<script src="js/physics.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
