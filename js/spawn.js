@@ -42,7 +42,7 @@ function spawnHazardsUpTo(targetX){
   // 구름 (상공, 100~195): 비교적 자주 배치, 슬램으로 찍으면 가속 발판 역할
   while (nextCloudSpawnX < targetX){
     clouds.push({ x: nextCloudSpawnX + rand(-8,8), h: rand(240,430), w: rand(24,36), key: CLOUD_KEYS[Math.floor(Math.random()*CLOUD_KEYS.length)], hit:false });
-    nextCloudSpawnX += rand(55,100);
+    nextCloudSpawnX += rand(28,55);
   }
   // 블랙홀 (우주, 320~480): 뜨문뜨문 희귀하게 배치, 닿으면 게임오버
   while (nextBlackholeSpawnX < targetX){

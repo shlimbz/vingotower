@@ -248,15 +248,21 @@ function update(dt){
   // 상공 구간(260~): 캐릭터 위치는 그대로 유지한 채, 줌만 다시 적당히 들어와서(줌인) 주변이 잘 보이게 함 (아이템/기믹 활용 가능하도록)
   // 그 사이(200~260): 줌만 자연스럽게 전환
   const GROUND_END = 200, SKY_START = 260;
-  const CHAR_Y_RATIO = 0.42; // 화면 정중앙(0.5)보다 살짝 위 - 지상 구간이 끝난 뒤에도 이 위치를 유지
+  const START_CHAR_Y_RATIO = 0.75; // 시작 시점: 화면 아래에서 1/4 지점 높이 (땅 위에 서 있는 자연스러운 위치)
+  const CHAR_Y_RATIO = 0.42; // 지상 구간이 끝난 뒤(및 그 이후) 유지하는 위치: 화면 정중앙보다 살짝 위
   const FAR_ZOOM = 0.82;
 
-  const charYRatio = CHAR_Y_RATIO;
+  const teGround = Math.max(0, Math.min(1, h/GROUND_END));
+  const easeGround = teGround*teGround*(3-2*teGround);
+  const charYRatio = h <= GROUND_END
+    ? (START_CHAR_Y_RATIO + (CHAR_Y_RATIO - START_CHAR_Y_RATIO) * easeGround)
+    : CHAR_Y_RATIO;
   const desiredCharScreenY = H * charYRatio;
   let targetZoom;
   let groundZoomAtEnd;
   {
-    const req = (H - margin - desiredCharScreenY) / (Math.max(GROUND_END,4) * PX_PER_M);
+    const endCharY = H*CHAR_Y_RATIO;
+    const req = (H - margin - endCharY) / (Math.max(GROUND_END,4) * PX_PER_M);
     groundZoomAtEnd = Math.max(0.2, Math.min(1, req));
   }
   if (h <= GROUND_END){

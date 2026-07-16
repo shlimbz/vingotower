@@ -129,7 +129,7 @@ function draw(){
   // 카메라가 움직이는 만큼만 정확히 스크롤되도록 함 (수동 타일 반복 계산에서 발생했던 앵커링 버그를 근본적으로 제거)
   const grassImg = assetEls.grass;
   if (grassImg && grassImg.complete && grassImg.naturalWidth){
-    const textureH = 460; // 가장 많이 줌아웃되는 경우까지 넉넉히 커버하는 고정 높이
+    const textureH = 90; // 원래 비율에 맞는 텍스처 크기 (확대되어 보이지 않도록)
     const ar = grassImg.naturalWidth/grassImg.naturalHeight;
     const tileW = textureH*ar;
     const topY = groundY - GRASS_LINE_FRAC*textureH;
@@ -143,7 +143,9 @@ function draw(){
         .scale(tileW/grassImg.naturalWidth, textureH/grassImg.naturalHeight);
       grassPatternCache.setTransform(m);
       ctx.fillStyle = grassPatternCache;
-      ctx.fillRect(localLeft, topY, localRight-localLeft, textureH);
+      // 세로로도 패턴이 자연스럽게 반복되어 바닥까지 다 덮이도록(하나를 억지로 늘리지 않음)
+      const fillBottom = Math.max(localBottom, H);
+      ctx.fillRect(localLeft, topY, localRight-localLeft, fillBottom-topY);
     }
   }
 
