@@ -31,9 +31,9 @@ function currentSprite(){
   return imgEls[currentSpriteKey()];
 }
 
-// 고도 구간 경계(200/400/600)에서 자연스럽게 배경 이미지를 크로스페이드
+// 고도 구간 경계(110/350/600, zoneName과 정확히 일치)에서 자연스럽게 배경 이미지를 크로스페이드
 function zoneBlendInfo(alt){
-  const BOUND = [200, 400, 600];
+  const BOUND = [110, 350, 600];
   const bandWidth = 70; // 경계 앞뒤로 이만큼(raw 단위)에 걸쳐 서서히 전환
   let idx = 0;
   for (let i=0;i<BOUND.length;i++){ if (alt >= BOUND[i]) idx = i+1; }

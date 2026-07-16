@@ -41,7 +41,7 @@ function spawnPadsUpTo(targetX){
 function spawnHazardsUpTo(targetX){
   // 구름 (상공, 100~195): 비교적 자주 배치, 슬램으로 찍으면 가속 발판 역할
   while (nextCloudSpawnX < targetX){
-    clouds.push({ x: nextCloudSpawnX + rand(-8,8), h: rand(240,430), w: rand(24,36), key: CLOUD_KEYS[Math.floor(Math.random()*CLOUD_KEYS.length)], hit:false });
+    clouds.push({ x: nextCloudSpawnX + rand(-8,8), h: rand(130,330), w: rand(24,36), key: CLOUD_KEYS[Math.floor(Math.random()*CLOUD_KEYS.length)], hit:false });
     nextCloudSpawnX += rand(28,55);
   }
   // 블랙홀 (우주, 320~480): 뜨문뜨문 희귀하게 배치, 닿으면 게임오버
@@ -57,13 +57,13 @@ function spawnHighAltItemsUpTo(targetX){
   while (nextSkyItemX < targetX){
     const type = pick([["cake",35],["mango",30],["coin",25],["star",6]]);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
-    items.push({ x: nextSkyItemX + rand(-10,10), h: rand(205,395), type, taken:false, cakeKey });
+    items.push({ x: nextSkyItemX + rand(-10,10), h: rand(120,340), type, taken:false, cakeKey });
     nextSkyItemX += rand(80,140);
   }
   while (nextStratoItemX < targetX){
     const type = pick([["cake",30],["mango",30],["coin",30],["star",8]]);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
-    items.push({ x: nextStratoItemX + rand(-15,15), h: rand(405,595), type, taken:false, cakeKey });
+    items.push({ x: nextStratoItemX + rand(-15,15), h: rand(360,590), type, taken:false, cakeKey });
     nextStratoItemX += rand(160,260);
   }
   while (nextSpaceItemX < targetX){
@@ -77,7 +77,7 @@ function spawnHighAltItemsUpTo(targetX){
 // 메테오 (성층권에만 존재): 캐릭터를 추적하지 않고, 그냥 대각선으로 떨어지는 고정 궤적
 function maybeSpawnMeteor(dt){
   if (meteors.length > 0) return;
-  if (h < 400 || h >= 600) return;
+  if (h < 350 || h >= 600) return;
   if (forcedFall || gameOverSpinning) return;
   if (Math.random() < 0.06*dt){ // 성층권에 머무는 동안 아주 가끔 등장
     const side = Math.random()<0.5 ? 1 : -1;
