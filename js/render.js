@@ -102,7 +102,8 @@ function draw(){
   const localLeft = zoomAnchorX - zoomAnchorX/zoom;
   const localRight = zoomAnchorX + (W - zoomAnchorX)/zoom;
   const localBottom = zoomAnchorY + (H - zoomAnchorY)/zoom;
-  ctx.fillStyle = alt < 8 ? "#8fce97" : "#6b9e78";
+  // 잔디 텍스처 바닥의 흙색과 맞춰서, 텍스처가 다 못 덮는 부분이 생겨도 초록색이 아닌 흙색이 보이도록 함
+  ctx.fillStyle = "#564133";
   ctx.fillRect(localLeft, groundY, localRight-localLeft, Math.max(localBottom, H) - groundY);
 
   // 실제 잔디 텍스처를 타일링해서 얹음 (잔디 중앙부가 groundY와 정확히 맞도록 정렬)
@@ -110,7 +111,8 @@ function draw(){
   // 원본이 이음새 없는(seamless) 텍스처가 아니라서, 한 칸씩 좌우 반전시켜 이어붙여 경계가 안 보이게 함
   const grassImg = assetEls.grass;
   if (grassImg && grassImg.complete && grassImg.naturalWidth){
-    const textureH = 85;
+    // 화면/줌 상태에 관계없이 항상 바닥까지 다 덮이도록 텍스처 높이를 동적으로 확장 (그래도 지면선 정렬은 유지됨)
+    const textureH = Math.max(85, (Math.max(localBottom,H) - groundY) + 30);
     const ar = grassImg.naturalWidth/grassImg.naturalHeight;
     const tileW = textureH*ar;
     const topY = groundY - GRASS_LINE_FRAC*textureH;

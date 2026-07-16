@@ -2,52 +2,25 @@
 // ---------- 스폰 ----------
 function spawnItemsUpTo(targetX){
   while (nextItemSpawnX < targetX){
-    // 초반엔 케이크 위주(쉬움) → 갈수록 케이크는 줄고 망고가 늘어나는 완만한 곡선 (구간이 아니라 연속적으로 변화)
-    // 코인/별은 항상 희귀하게 유지 (코인은 업그레이드 자원이라 쉽게 안 줌, 별은 매우 희귀)
+    // 초반엔 케이크 위주(쉬움) → 갈수록 케이크는 줄고 망고가 늘어나는 완만한 곡선
+    // 코인/별은 항상 희귀한 레어템으로 유지
     const px = nextItemSpawnX;
     const dispX = px * DISPLAY_SCALE; // 표시 기준 거리(m)로 환산해서 진행도 계산
     const t = Math.min(1, dispX / 1200); // 0(초반) → 1(약 1200m 표시 기준부터는 고정)
 
-    const cakeWeight = 20 - 12*t;   // 초반 20 → 후반 8
-    const mangoWeight = 6 + 16*t;   // 초반 6  → 후반 22
-    const coinWeight = 10;
-    const starWeight = 1;
-    const spacingMin = 30 + 42*t;
-    const spacingMax = 48 + 58*t;
+    const cakeWeight = 22 - 13*t;   // 초반 22 → 후반 9
+    const mangoWeight = 5 + 15*t;   // 초반 5  → 후반 20
+    const coinWeight = 4;           // 항상 레어
+    const starWeight = 0.6;         // 항상 매우 레어
+    const spacingMin = 26 + 30*t;
+    const spacingMax = 42 + 46*t;
 
     const type = pick([["coin",coinWeight],["cake",cakeWeight],["mango",mangoWeight],["star",starWeight]]);
     // 지표면 위주로 낮게 배치 (가끔만 살짝 높은 곳)
-    const hh = Math.random() < 0.8 ? rand(1.5, 10) : rand(10, 26);
+    const hh = Math.random() < 0.8 ? rand(1.5, 10) : rand(10, 24);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
     items.push({ x: nextItemSpawnX + rand(-3,3), h: hh, type, taken:false, cakeKey });
     nextItemSpawnX += rand(spacingMin, spacingMax);
-  }
-  spawnSkyArcsUpTo(targetX);
-}
-
-// 하늘에 올라가는/내려가는 포물선 형태로 아이템을 배치해서 연속으로 먹기 좋게 함
-// 주의: 별은 클러스터 전체가 별이 되면 너무 강력해지므로 아크 풀에서 제외
-function spawnSkyArcsUpTo(targetX){
-  while (nextArcSpawnX < targetX){
-    if (Math.random() < 0.4){
-      const ascending = Math.random() < 0.5;
-      const n = 4 + Math.floor(Math.random()*3); // 4~6개
-      const dx = rand(9, 13);
-      const baseH = rand(20, 45);
-      const peakDelta = rand(35, 65);
-      const arcType = pick([["cake",42],["mango",34],["coin",24]]); // 별 제외
-      for (let i=0;i<n;i++){
-        const tt = i/(n-1);
-        const ease = tt*tt; // 부드러운 곡선(가속) 형태
-        const hh = ascending ? baseH + peakDelta*ease : baseH + peakDelta*(1-ease);
-        const type = arcType;
-        const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
-        items.push({ x: nextArcSpawnX + i*dx, h: hh, type, taken:false, cakeKey });
-      }
-      nextArcSpawnX += n*dx + rand(70,120);
-    } else {
-      nextArcSpawnX += rand(140,220);
-    }
   }
 }
 function spawnPadsUpTo(targetX){

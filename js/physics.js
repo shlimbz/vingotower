@@ -2,7 +2,7 @@
 // ---------- 발사 ----------
 function resetRun(){
   x=0; h=0; vx=0; vy=0;
-  camX=0; camY=0; zoom=1;
+  camX=0; camY=0; zoom=1; cameraFarMode=false;
   angleDeg=45; angleDir=1; power=0; powerDir=1;
   slamGauge=100; slamCount=0; isSlamming=false; slamCharges=slamChargeCap();
   coinsThisRun=0; maxDistanceThisRun=0;
@@ -106,9 +106,9 @@ function checkPadCollision(){
   for (const p of padZones){
     if (x >= p.x1-PAD_MARGIN && x <= p.x2+PAD_MARGIN && !p._hit){
       p._hit = true;
-      if (p.type === "boost"){ vx *= 1.5; showToast("가속 발판!"); screenShake(6,0.15); spawnParticles(x,0,14,{color:"#ff8a4a",minSpd:8,maxSpd:24,minLife:.25,maxLife:.5,dirBias:true}); }
-      else if (p.type === "sticky"){ vx *= 0.5; showToast("접착 발판..."); spawnParticles(x,0,8,{color:"#6b4a2f",minSpd:2,maxSpd:8,minLife:.3,maxLife:.5}); }
-      else if (p.type === "jump"){ vy = Math.max(vy, 22); h = Math.max(h,0.1); state = STATE.FLY; showToast("점프대!"); screenShake(6,0.15); spawnParticles(x,0,14,{color:"#4ad0ff",minSpd:6,maxSpd:20,minLife:.25,maxLife:.5,upBias:8}); }
+      if (p.type === "boost"){ vx = vx*2.1 + 8; showToast("가속 발판!! +"); screenShake(10,0.22); spawnParticles(x,0,22,{color:"#ff8a4a",minSpd:12,maxSpd:34,minLife:.3,maxLife:.6,dirBias:true}); }
+      else if (p.type === "sticky"){ vx *= 0.3; showToast("접착 발판... 속도 급감"); screenShake(4,0.15); spawnParticles(x,0,14,{color:"#6b4a2f",minSpd:2,maxSpd:8,minLife:.3,maxLife:.5}); }
+      else if (p.type === "jump"){ vy = Math.max(vy, 42); h = Math.max(h,0.1); state = STATE.FLY; showToast("점프대!! 발사!"); screenShake(10,0.22); spawnParticles(x,0,22,{color:"#4ad0ff",minSpd:10,maxSpd:30,minLife:.3,maxLife:.6,upBias:12}); }
     }
     if (x > p.x2 + 40) p._hit = false; // allow re-trigger far later if looped (not used but safe)
   }
@@ -238,25 +238,26 @@ function update(dt){
   const camLerp = Math.min(1, CAM_FOLLOW*dt);
   camX += (x - camX) * camLerp;
 
-  // 100m 이내: 땅과 캐릭터가 항상 같이 보이도록 줌으로 조절
-  // 100m 이상: 땅을 억지로 보여줄 필요 없이, 적당히 줌인해서 캐릭터와 주변이 잘 보이게 그냥 따라감
-  const groundMarginPx = 30;
   const baseGroundYNow = H*GROUND_Y_RATIO;
-  const camYCap = Math.max(4, (H - groundMarginPx - baseGroundYNow) / (PX_PER_M * Math.max(zoom, 0.4)));
-  const FAR_ZOOM = 0.82;
-  const FAR_CHAR_Y_RATIO = 0.44; // 화면 정중앙(0.5)보다 살짝 위
-  const blendStart = 170, blendEnd = 260; // 이 구간에서 "땅 보이기" 모드 → "캐릭터 중심 보기" 모드로 자연스럽게 전환
-  const blendT = Math.max(0, Math.min(1, (Math.max(0,h) - blendStart) / (blendEnd - blendStart)));
-  const blend = blendT*blendT*(3 - 2*blendT); // smoothstep - 더 자연스러운 전환
+  const groundMarginPx = 30;
 
-  const camYTargetNear = Math.min(h, camYCap);
-  // 100m 이상: 캐릭터가 화면 중앙보다 살짝 위쪽에 오도록(아래쪽 구름 등이 잘 보이게) camY를 역산
-  const desiredFarScreenY = H*FAR_CHAR_Y_RATIO;
-  const camYTargetFar = h - (baseGroundYNow - desiredFarScreenY) / (PX_PER_M * Math.max(zoom, 0.3));
-  const camYTarget = camYTargetNear*(1-blend) + camYTargetFar*blend;
+  // 지상 모드 ↔ 상공 모드 전환 (히스테리시스: 올라갈 땐 220에서, 내려올 땐 160에서 전환 → 경계에서 떨림 방지)
+  if (!cameraFarMode && h > 220) cameraFarMode = true;
+  else if (cameraFarMode && h < 160) cameraFarMode = false;
+
+  let camYTarget, targetZoom;
+  if (!cameraFarMode){
+    // 지상 모드: 캐릭터가 올라갈수록 줌아웃해서 캐릭터와 그 아래 땅이 항상 같이 보이도록 함
+    targetZoom = isSlamming ? 1.15 : Math.max(0.42, 1 - h/230);
+    const camYCap = Math.max(4, (H - groundMarginPx - baseGroundYNow) / (PX_PER_M * Math.max(targetZoom, 0.4)));
+    camYTarget = Math.min(h, camYCap);
+  } else {
+    // 상공 모드: 땅을 억지로 보여주지 않고, 캐릭터가 화면 정중앙보다 살짝 위에 오도록 하고 적당히 줌인
+    targetZoom = isSlamming ? 1.15 : 0.85;
+    const desiredScreenY = H*0.42;
+    camYTarget = h - (baseGroundYNow - desiredScreenY) / (PX_PER_M * Math.max(zoom, 0.3));
+  }
   camY += (camYTarget - camY) * camLerp;
-
-  let targetZoom = isSlamming ? 1.22 : (Math.max(0.55, 1 - Math.min(h,blendEnd)/140)*(1-blend) + FAR_ZOOM*blend);
   zoom += (targetZoom - zoom) * Math.min(1, 3.2*dt);
 
   if (hitStopTimer>0){ hitStopTimer -= dt; return; } // 타격 정지 프레임 - 물리는 잠시 멈춤
