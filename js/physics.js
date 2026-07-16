@@ -256,7 +256,7 @@ function update(dt){
   const GROUND_END_CHAR_Y_RATIO = 0.50; // 지상 구간 끝: 캐릭터와 땅이 같이 보이도록 적당히 위로
   const SKY_CHAR_Y_RATIO = 0.42;    // 상공 진입 후: 화면 정중앙보다 살짝 위
   const ZOOM_FLOOR = 0.4; // 너무 작아지지 않도록 하는 최소 줌 (캐릭터가 계속 잘 보이도록)
-  const FAR_ZOOM = 0.82;
+  const FAR_ZOOM = 0.62;
 
   let charYRatio;
   if (h <= GROUND_END){

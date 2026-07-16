@@ -350,7 +350,7 @@ function draw(){
   // HUD 텍스트 업데이트
   HUD_EL.distanceReadout.innerHTML = Math.floor(Math.max(x,0)*DISPLAY_SCALE)+"<span> m</span>";
   HUD_EL.coinCount.textContent = coinsThisRun;
-  HUD_EL.zoneLabel.textContent = zoneName(alt) + " · " + Math.floor(alt*DISPLAY_SCALE) + "m";
+  HUD_EL.zoneLabel.textContent = zoneName(alt) + " · " + Math.floor(alt) + "m";
   HUD_EL.slamFill.style.height = slamGauge+"%";
   const capNow = slamChargeCap();
   const pipsEl = HUD_EL.slamCharges;
