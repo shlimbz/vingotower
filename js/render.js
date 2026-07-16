@@ -295,12 +295,6 @@ function draw(){
   }
   let stretchX = 1, stretchY = 1;
   if (isSlamming){ stretchX = 0.82; stretchY = 1.22; }
-  else if (state===STATE.FLY){
-    const speedNow = Math.hypot(vx, vy);
-    const speedT = Math.min(1, speedNow/90);
-    stretchX = 1 + speedT*0.22; // 빠를수록 이동 방향으로 길쭉하게 늘어나며 속도감을 강조
-    stretchY = 1 - speedT*0.12;
-  }
   if (gameOverSpinning){
     const shrink = Math.max(0.15, 1 - (gameOverSpinTimer/0.7));
     stretchX *= shrink; stretchY *= shrink;

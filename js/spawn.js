@@ -1,4 +1,11 @@
 // ===== spawn.js =====
+// 멀리/높이 갈수록 코인 가치가 올라감 (거리+고도 둘 다 반영) - 항상 갈수록 좋은 보상이 생기도록
+function coinValueFor(px, hh){
+  const distBonus = Math.floor((px*DISPLAY_SCALE)/300);
+  const altBonus = Math.floor(hh/150);
+  return 1 + distBonus + altBonus;
+}
+
 // ---------- 스폰 ----------
 function spawnItemsUpTo(targetX){
   while (nextItemSpawnX < targetX){
@@ -25,7 +32,8 @@ function spawnItemsUpTo(targetX){
     else if (hRoll < 0.90) hh = rand(40, 90);
     else hh = rand(90, 160);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
-    items.push({ x: nextItemSpawnX + rand(-3,3), h: hh, type, taken:false, cakeKey });
+    const coinValue = type==="coin" ? coinValueFor(nextItemSpawnX, hh) : undefined;
+    items.push({ x: nextItemSpawnX + rand(-3,3), h: hh, type, taken:false, cakeKey, coinValue });
     nextItemSpawnX += rand(spacingMin, spacingMax);
   }
   spawnCoinTrailsUpTo(targetX);
@@ -46,17 +54,17 @@ function spawnCoinTrailsUpTo(targetX){
         const tt = i/(n-1);
         const curve = Math.sin(tt*Math.PI); // 0→1→0 부드러운 아치
         const hh = baseH + (up ? curve*peak : -curve*peak*0.6);
-        items.push({ x: nextCoinTrailX + i*dx, h: Math.max(1.5,hh), type:"coin", taken:false, cakeKey:null });
+        items.push({ x: nextCoinTrailX + i*dx, h: Math.max(1.5,hh), type:"coin", taken:false, cakeKey:null, coinValue: coinValueFor(nextCoinTrailX + i*dx, Math.max(1.5,hh)) });
       }
     } else if (pattern === "line"){
       for (let i=0;i<n;i++){
-        items.push({ x: nextCoinTrailX + i*dx, h: baseH, type:"coin", taken:false, cakeKey:null });
+        items.push({ x: nextCoinTrailX + i*dx, h: baseH, type:"coin", taken:false, cakeKey:null, coinValue: coinValueFor(nextCoinTrailX + i*dx, baseH) });
       }
     } else { // zigzag
       const amp = rand(12, 24);
       for (let i=0;i<n;i++){
         const hh = baseH + (i%2===0 ? amp : -amp*0.4);
-        items.push({ x: nextCoinTrailX + i*dx, h: Math.max(1.5,hh), type:"coin", taken:false, cakeKey:null });
+        items.push({ x: nextCoinTrailX + i*dx, h: Math.max(1.5,hh), type:"coin", taken:false, cakeKey:null, coinValue: coinValueFor(nextCoinTrailX + i*dx, Math.max(1.5,hh)) });
       }
     }
     nextCoinTrailX += n*dx + rand(50, 90);
@@ -89,22 +97,61 @@ function spawnHazardsUpTo(targetX){
 // 상공/성층권/우주에도 드물게 아이템을 배치 (땅 위가 아니라 구간 내 고도에 자유롭게, 위로 갈수록 더 희귀하고 간격도 넓게)
 function spawnHighAltItemsUpTo(targetX){
   while (nextSkyItemX < targetX){
-    const type = pick([["cake",35],["mango",30],["coin",25],["star",6]]);
+    const type = pick([["cake",30],["mango",26],["coin",38],["star",6]]);
+    const hh = rand(120,340);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
-    items.push({ x: nextSkyItemX + rand(-10,10), h: rand(120,340), type, taken:false, cakeKey });
+    const coinValue = type==="coin" ? coinValueFor(nextSkyItemX, hh) : undefined;
+    items.push({ x: nextSkyItemX + rand(-10,10), h: hh, type, taken:false, cakeKey, coinValue });
     nextSkyItemX += rand(80,140);
   }
   while (nextStratoItemX < targetX){
-    const type = pick([["cake",30],["mango",30],["coin",30],["star",8]]);
+    const type = pick([["cake",22],["mango",22],["coin",48],["star",8]]);
+    const hh = rand(360,590);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
-    items.push({ x: nextStratoItemX + rand(-15,15), h: rand(360,590), type, taken:false, cakeKey });
+    const coinValue = type==="coin" ? coinValueFor(nextStratoItemX, hh) : undefined;
+    items.push({ x: nextStratoItemX + rand(-15,15), h: hh, type, taken:false, cakeKey, coinValue });
     nextStratoItemX += rand(160,260);
   }
   while (nextSpaceItemX < targetX){
-    const type = pick([["cake",25],["mango",25],["coin",35],["star",12]]);
+    const type = pick([["cake",15],["mango",15],["coin",58],["star",12]]);
+    const hh = rand(610,850);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
-    items.push({ x: nextSpaceItemX + rand(-20,20), h: rand(610,850), type, taken:false, cakeKey });
+    const coinValue = type==="coin" ? coinValueFor(nextSpaceItemX, hh) : undefined;
+    items.push({ x: nextSpaceItemX + rand(-20,20), h: hh, type, taken:false, cakeKey, coinValue });
     nextSpaceItemX += rand(280,420);
+  }
+  spawnSpaceConstellationsUpTo(targetX);
+}
+
+// 우주 구간: 코인을 별자리/은하수 모양으로 배치 - 순수 점수용을 넘어 시각적 재미 + 큰 보상을 줌
+function spawnSpaceConstellationsUpTo(targetX){
+  while (nextConstellationX < targetX){
+    const kind = pick([["star5",50],["milkyway",50]]);
+    const cx = nextConstellationX + rand(40,80);
+    const cy = rand(640, 820);
+    if (kind === "star5"){
+      // 오각별 모양으로 코인을 배치
+      const R = rand(35, 55);
+      const points = [];
+      for (let i=0;i<5;i++){
+        const ang = -Math.PI/2 + i*(Math.PI*4/5);
+        points.push({ x: cx + Math.cos(ang)*R, h: cy + Math.sin(ang)*R*0.7 });
+      }
+      for (const p of points){
+        items.push({ x: p.x, h: Math.max(605,p.h), type:"coin", taken:false, cakeKey:null, coinValue: coinValueFor(p.x, p.h)*2 });
+      }
+      nextConstellationX += R*2 + rand(300,450);
+    } else {
+      // 은하수: 완만하게 굽이치는 긴 코인 띠
+      const n = 10 + Math.floor(Math.random()*6);
+      const dx = rand(14,20);
+      const amp = rand(20,40);
+      for (let i=0;i<n;i++){
+        const hh = cy + Math.sin(i*0.5)*amp;
+        items.push({ x: cx + i*dx, h: Math.max(605,hh), type:"coin", taken:false, cakeKey:null, coinValue: coinValueFor(cx+i*dx, hh) });
+      }
+      nextConstellationX += n*dx + rand(300,450);
+    }
   }
 }
 

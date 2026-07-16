@@ -10,7 +10,7 @@ function resetRun(){
   coinsThisRun=0; maxDistanceThisRun=0;
   items=[]; padZones=[]; nextItemSpawnX=20; nextArcSpawnX=150; nextCoinTrailX=90; nextPadSpawnX=60;
   blackholes=[]; clouds=[]; meteors=[]; nextCloudSpawnX=320; nextBlackholeSpawnX=500;
-  nextSkyItemX=250; nextStratoItemX=450; nextSpaceItemX=700;
+  nextSkyItemX=250; nextStratoItemX=450; nextSpaceItemX=700; nextConstellationX=750;
   forcedFall=false; gameOverSpinning=false; gameOverSpinTimer=0; prevH=0;
   reviveUsedThisRun=false; reviveAvailableThisRun = upgrades.revive.level>=1;
   spinTimer=0; spinAngle=0; starTimer=0;
@@ -67,8 +67,13 @@ function trySlam(){
 const CAKE_SPEED_BOOST = 16;  // 케이크: 수평 속도에 고정 수치 추가
 const MANGO_SPEED_PENALTY = 14; // 망고: 수평 속도에서 고정 수치 차감
 
-function applyItemEffect(type){
-  if (type === "coin"){ coinsThisRun++; showToast("+코인"); playSfx('coin'); }
+function applyItemEffect(type, item){
+  if (type === "coin"){
+    const value = (item && item.coinValue) || 1;
+    coinsThisRun += value;
+    showToast(value > 1 ? ("+코인 x"+value) : "+코인");
+    playSfx('coin');
+  }
   else if (type === "cake"){ vx += CAKE_SPEED_BOOST; vy += 5; showToast("케이크! 속도 +"+CAKE_SPEED_BOOST); playSfx('cake'); }
   else if (type === "mango"){
     if (starTimer > 0){ showToast("무적! 망고 무효"); }
@@ -86,7 +91,7 @@ function applyItemEffect(type){
     stopSlamWhoosh();
     showToast("★ 무적 & 45도로 재발사!");
     for (const it of items){
-      if (!it.taken && Math.abs(it.x - x) < 30) { it.taken = true; coinsThisRun++; }
+      if (!it.taken && Math.abs(it.x - x) < 30) { it.taken = true; coinsThisRun += (it.coinValue||1); }
     }
   }
 }
@@ -97,7 +102,7 @@ function checkItemCollisions(){
     if (it.taken) continue;
     if (Math.abs(it.x - x) < 4 && Math.abs(it.h - h) < 9){
       it.taken = true;
-      applyItemEffect(it.type);
+      applyItemEffect(it.type, it);
       spawnParticles(it.x, it.h, it.type==="star"?24:10, {
         color: ITEM_FX_COLOR[it.type], minSpd:5, maxSpd: it.type==="star"?26:14,
         minLife:.25, maxLife:.5, minSize:1.5, maxSize:3.5
@@ -322,14 +327,6 @@ function update(dt){
         if (trailHistory.length > 8) trailHistory.shift();
       }
     }
-    // 고속 비행 중 캐릭터 뒤로 흩날리는 스피드 파티클 (속도감 강화)
-    {
-      const speedNow = Math.hypot(vx, vy);
-      if (speedNow > 40 && Math.random() < (speedNow-40)*0.01){
-        const back = vx >= 0 ? -1 : 1;
-        spawnParticles(x + back*1.5, h, 1, { color:"rgba(255,255,255,.5)", minSpd:2, maxSpd:6, minLife:.15, maxLife:.3, minSize:1.5, maxSize:2.5 });
-      }
-    }
     const drag = 1 - Math.min(0.35, (0.02 - upgrades.drag.level*0.0015) * dt * 2);
     vy -= GRAVITY*dt;
     vx *= drag;
@@ -356,7 +353,6 @@ function update(dt){
       const impactSpeed = Math.abs(vy);
       h = 0;
       forcedFall = false;
-      checkPadCollision(); // 착지(바운스) 순간마다 발판 판정 - 예전엔 완전히 구르기 상태일 때만 체크해서 튕기는 도중엔 발판이 무시되는 버그가 있었음
       if (isSlamming){
         isSlamming = false;
         stopSlamWhoosh();
@@ -368,6 +364,7 @@ function update(dt){
         playSfx('slamImpact');
         vy = impactSpeed * 0.55;
         vx *= (0.88 + upgrades.weight.level*0.009); // 슬램 착지는 일반 착지보다 손실이 적음 (12%)
+        checkPadCollision(); // 바운스 속도가 정해진 뒤에 발판 효과를 적용 (안 그러면 점프대 등이 바로 덮어써짐)
         if (vx < 3.5 || vy < 3){ state = STATE.GROUND; }
       } else {
         // 일반 착지: 통통 튀는 바운스 - 수직 속도는 확실히 줄지만 수평 속도는 많이 유지되어
@@ -379,6 +376,7 @@ function update(dt){
         if (impactT > 0.35){ hitStop(0.02 + impactT*0.045); playSfx('slamImpact', 0.35 + impactT*0.5); }
         vy = impactSpeed * (0.48 + upgrades.weight.level*0.015);
         vx *= (0.82 + upgrades.weight.level*0.012); // 맨땅 착지마다 확실히 감속 (약 18% 손실)
+        checkPadCollision(); // 바운스 속도가 정해진 뒤에 발판 효과를 적용
         if (vy < 2.5 || vx < 3.5){ state = STATE.GROUND; vy = 0; }
       }
     }

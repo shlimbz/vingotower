@@ -36,6 +36,7 @@ let meteors = [];    // {x,h,vx,vh,life} 성층권: 맞으면 강제 낙하
 let nextCloudSpawnX = 320;
 let nextBlackholeSpawnX = 500;
 let nextSkyItemX = 250, nextStratoItemX = 450, nextSpaceItemX = 700;
+let nextConstellationX = 750;
 let forcedFall = false;   // 메테오 효과: 슬램 불가, 땅에 닿을 때까지 강제 낙하
 let gameOverSpinning = false; // 블랙홀에 빨려들어가는 연출 중
 let gameOverSpinTimer = 0;
