@@ -219,20 +219,23 @@ function draw(){
     }
   }
 
-  // 비행 잔상 (모션 트레일) - 캐릭터 뒤로 살짝 흐릿하게 남는 자국
+  // 비행 잔상 (모션 트레일) - 캐릭터 뒤로 남는 자국, 속도에 따라 간격이 벌어짐
   if (state === STATE.FLY && trailHistory.length > 1){
     const trailImg = isSlamming ? imgEls.slam : imgEls.fly;
     if (trailImg && trailImg.complete && trailImg.naturalWidth){
       const tAr = trailImg.naturalWidth/trailImg.naturalHeight;
       const tMult = isSlamming ? (SPRITE_SIZE_MULT.slam||1) : (SPRITE_SIZE_MULT.fly||1);
       const tSizePx = 11*PX_PER_M*tMult;
-      const tW = tSizePx*Math.sqrt(tAr), tH = tSizePx/Math.sqrt(tAr);
-      for (let i=0;i<trailHistory.length-1;i++){
+      const n = trailHistory.length;
+      for (let i=0;i<n-1;i++){
         const s = trailHistory[i];
-        const a = (i+1)/trailHistory.length * 0.28; // 오래된 잔상일수록 흐릿함
+        const age = (i+1)/n; // 0(가장 오래됨) ~ 1(가장 최근)
+        const a = 0.08 + age*0.30;
+        const scale = 0.8 + age*0.2; // 오래된 잔상일수록 살짝 작아지며 사라지는 느낌
+        const w = tSizePx*Math.sqrt(tAr)*scale, hh = tSizePx/Math.sqrt(tAr)*scale;
         const sx = worldToScreenX(s.x), sy = worldToScreenY(s.h);
         ctx.globalAlpha = a;
-        ctx.drawImage(trailImg, sx-tW/2, sy-tH/2, tW, tH);
+        ctx.drawImage(trailImg, sx-w/2, sy-hh/2, w, hh);
       }
       ctx.globalAlpha = 1;
     }

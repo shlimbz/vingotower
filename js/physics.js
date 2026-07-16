@@ -4,7 +4,7 @@ function resetRun(){
   x=0; h=0; vx=0; vy=0;
   camX=0; camY=0; zoom=1;
   punchTimer=0; punchLingerTimer=0; punchWorldX=0;
-  trailHistory=[]; trailSampleTimer=0;
+  trailHistory=[]; lastTrailX=0; lastTrailH=0;
   angleDeg=45; angleDir=1; power=0; powerDir=1;
   slamGauge=100; slamCount=0; isSlamming=false; slamCharges=slamChargeCap();
   coinsThisRun=0; maxDistanceThisRun=0;
@@ -111,9 +111,9 @@ function checkPadCollision(){
   for (const p of padZones){
     if (x >= p.x1-PAD_MARGIN && x <= p.x2+PAD_MARGIN && !p._hit){
       p._hit = true;
-      if (p.type === "boost"){ vx = vx*2.1 + 8; showToast("가속 발판!! +"); screenShake(10,0.22); spawnParticles(x,0,22,{color:"#ff8a4a",minSpd:12,maxSpd:34,minLife:.3,maxLife:.6,dirBias:true}); }
-      else if (p.type === "sticky"){ vx *= 0.3; showToast("접착 발판... 속도 급감"); screenShake(4,0.15); spawnParticles(x,0,14,{color:"#6b4a2f",minSpd:2,maxSpd:8,minLife:.3,maxLife:.5}); }
-      else if (p.type === "jump"){ vy = Math.max(vy, 42); h = Math.max(h,0.1); state = STATE.FLY; showToast("점프대!! 발사!"); screenShake(10,0.22); spawnParticles(x,0,22,{color:"#4ad0ff",minSpd:10,maxSpd:30,minLife:.3,maxLife:.6,upBias:12}); }
+      if (p.type === "boost"){ vx += 30; showToast("가속 발판!! +30"); screenShake(10,0.22); spawnParticles(x,0,22,{color:"#ff8a4a",minSpd:12,maxSpd:34,minLife:.3,maxLife:.6,dirBias:true}); }
+      else if (p.type === "sticky"){ vx = Math.max(2, vx - 30); showToast("접착 발판... -30"); screenShake(4,0.15); spawnParticles(x,0,14,{color:"#6b4a2f",minSpd:2,maxSpd:8,minLife:.3,maxLife:.5}); }
+      else if (p.type === "jump"){ vy = Math.max(vy, 42); vx += 20; h = Math.max(h,0.1); state = STATE.FLY; showToast("점프대!! 발사!"); screenShake(10,0.22); spawnParticles(x,0,22,{color:"#4ad0ff",minSpd:10,maxSpd:30,minLife:.3,maxLife:.6,upBias:12}); }
     }
     if (x > p.x2 + 40) p._hit = false; // allow re-trigger far later if looped (not used but safe)
   }
@@ -252,18 +252,22 @@ function update(dt){
   // 이때 캐릭터는 화면 정중앙보다 살짝 위(약 42% 지점)까지만 올라가고 그 이상은 안 올라감
   // 상공 구간(260~): 캐릭터 위치는 그대로 유지한 채, 줌만 다시 적당히 들어와서(줌인) 주변이 잘 보이게 함 (아이템/기믹 활용 가능하도록)
   // 그 사이(200~260): 줌만 자연스럽게 전환
-  const GROUND_END = 200, SKY_START = 260;
-  const GROUND_CHAR_Y_RATIO = 0.75; // 지상 구간에서는 화면 아래에서 1/4 지점(=3/4 지점)에 캐릭터를 고정 - 그 이상 안 올라감
+  const GROUND_END = 110, SKY_START = 170;
+  const START_CHAR_Y_RATIO = 0.78; // 시작: 화면 아래쪽, 땅 위에 선 자연스러운 위치
+  const GROUND_END_CHAR_Y_RATIO = 0.50; // 지상 구간 끝: 캐릭터와 땅이 같이 보이도록 적당히 위로
   const SKY_CHAR_Y_RATIO = 0.42;    // 상공 진입 후: 화면 정중앙보다 살짝 위
+  const ZOOM_FLOOR = 0.4; // 너무 작아지지 않도록 하는 최소 줌 (캐릭터가 계속 잘 보이도록)
   const FAR_ZOOM = 0.82;
 
   let charYRatio;
   if (h <= GROUND_END){
-    charYRatio = GROUND_CHAR_Y_RATIO;
+    const te = Math.max(0, Math.min(1, h/GROUND_END));
+    const ease = te*te*(3-2*te);
+    charYRatio = START_CHAR_Y_RATIO + (GROUND_END_CHAR_Y_RATIO - START_CHAR_Y_RATIO)*ease;
   } else if (h <= SKY_START){
     const te = (h-GROUND_END)/(SKY_START-GROUND_END);
     const ease = te*te*(3-2*te);
-    charYRatio = GROUND_CHAR_Y_RATIO + (SKY_CHAR_Y_RATIO - GROUND_CHAR_Y_RATIO)*ease;
+    charYRatio = GROUND_END_CHAR_Y_RATIO + (SKY_CHAR_Y_RATIO - GROUND_END_CHAR_Y_RATIO)*ease;
   } else {
     charYRatio = SKY_CHAR_Y_RATIO;
   }
@@ -271,17 +275,18 @@ function update(dt){
 
   let targetZoom;
   if (h <= GROUND_END){
-    // 지상 구간에서는 무조건 땅과 캐릭터가 같은 화면에 보이도록, 필요한 줌 값을 고도마다 직접 역산
+    // 지상 구간: 캐릭터+땅이 같이 보이는 데 필요한 줌을 역산하되, 캐릭터가 너무 작아지지 않도록 최소치를 둠
     if (h < 4){
       targetZoom = 1;
     } else {
       const required = (H - margin - desiredCharScreenY) / (h * PX_PER_M);
-      targetZoom = Math.max(0.15, Math.min(1, required));
+      targetZoom = Math.max(ZOOM_FLOOR, Math.min(1, required));
     }
   } else if (h <= SKY_START){
     const te = (h-GROUND_END)/(SKY_START-GROUND_END);
     const ease = te*te*(3-2*te);
-    const groundEndZoom = Math.max(0.15, Math.min(1, (H - margin - H*GROUND_CHAR_Y_RATIO) / (GROUND_END * PX_PER_M)));
+    const groundEndReq = (H - margin - H*GROUND_END_CHAR_Y_RATIO) / (GROUND_END * PX_PER_M);
+    const groundEndZoom = Math.max(ZOOM_FLOOR, Math.min(1, groundEndReq));
     targetZoom = groundEndZoom + (FAR_ZOOM - groundEndZoom)*ease;
   } else {
     targetZoom = FAR_ZOOM;
@@ -308,11 +313,15 @@ function update(dt){
   }
   else if (state === STATE.FLY){
     prevH = h;
-    trailSampleTimer -= dt;
-    if (trailSampleTimer <= 0){
-      trailSampleTimer = 0.035;
-      trailHistory.push({ x, h, isSlamming });
-      if (trailHistory.length > 6) trailHistory.shift();
+    {
+      const speedNow = Math.hypot(vx, vy);
+      const sampleGap = Math.max(5, speedNow * 0.16); // 속도가 빠를수록 잔상 간격이 넓어짐
+      const distMoved = Math.hypot(x-lastTrailX, h-lastTrailH);
+      if (distMoved >= sampleGap){
+        lastTrailX = x; lastTrailH = h;
+        trailHistory.push({ x, h, isSlamming });
+        if (trailHistory.length > 8) trailHistory.shift();
+      }
     }
     const drag = 1 - Math.min(0.35, (0.02 - upgrades.drag.level*0.0015) * dt * 2);
     vy -= GRAVITY*dt;

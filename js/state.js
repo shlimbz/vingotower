@@ -63,7 +63,7 @@ const PUNCH_AFTER_DUR = 0.16;
 let punchLingerTimer = 0; // 타격 모션 이후에도 발사 지점에 그대로 남아있는 시간
 let punchWorldX = 0; // 때리는 캐릭터가 고정되어 남는 월드 x좌표(발사 지점)
 let trailHistory = []; // 비행 중 잔상 효과용 최근 위치 기록
-let trailSampleTimer = 0;
+let lastTrailX = 0, lastTrailH = 0;
 let ringFx = []; // {x,h,life,maxLife,color}
 
 function screenShake(mag, dur){
@@ -104,14 +104,14 @@ function pick(weights){
 function showToast(text){ toastText = text; toastTimer = 1.1; }
 
 function zoneName(alt){
-  if (alt < 200) return "지상";
-  if (alt < 400) return "상공";
+  if (alt < 110) return "지상";
+  if (alt < 350) return "상공";
   if (alt < 600) return "성층권";
   return "우주";
 }
 function skyColors(alt){
-  if (alt < 200) return [ "#bfe6c9", "#7ec8e3" ];
-  if (alt < 400) return [ "#7ec8e3", "#3f7fc9" ];
+  if (alt < 110) return [ "#bfe6c9", "#7ec8e3" ];
+  if (alt < 350) return [ "#7ec8e3", "#3f7fc9" ];
   if (alt < 600) return [ "#2b3d8f", "#141a4a" ];
   return [ "#0a0a1f", "#000000" ];
 }
