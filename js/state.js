@@ -25,6 +25,7 @@ let maxDistanceThisRun = 0;
 let items = []; // {x, h, type, taken}
 let padZones = []; // {x1,x2,type} ground gimmicks
 let nextItemSpawnX = 20;
+let nextCoinTrailX = 90;
 let nextArcSpawnX = 150;
 let nextPadSpawnX = 60;
 

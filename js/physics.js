@@ -8,7 +8,7 @@ function resetRun(){
   angleDeg=45; angleDir=1; power=0; powerDir=1;
   slamGauge=100; slamCount=0; isSlamming=false; slamCharges=slamChargeCap();
   coinsThisRun=0; maxDistanceThisRun=0;
-  items=[]; padZones=[]; nextItemSpawnX=20; nextArcSpawnX=150; nextPadSpawnX=60;
+  items=[]; padZones=[]; nextItemSpawnX=20; nextArcSpawnX=150; nextCoinTrailX=90; nextPadSpawnX=60;
   blackholes=[]; clouds=[]; meteors=[]; nextCloudSpawnX=320; nextBlackholeSpawnX=500;
   nextSkyItemX=250; nextStratoItemX=450; nextSpaceItemX=700;
   forcedFall=false; gameOverSpinning=false; gameOverSpinTimer=0; prevH=0;
@@ -322,6 +322,14 @@ function update(dt){
         if (trailHistory.length > 8) trailHistory.shift();
       }
     }
+    // 고속 비행 중 캐릭터 뒤로 흩날리는 스피드 파티클 (속도감 강화)
+    {
+      const speedNow = Math.hypot(vx, vy);
+      if (speedNow > 40 && Math.random() < (speedNow-40)*0.01){
+        const back = vx >= 0 ? -1 : 1;
+        spawnParticles(x + back*1.5, h, 1, { color:"rgba(255,255,255,.5)", minSpd:2, maxSpd:6, minLife:.15, maxLife:.3, minSize:1.5, maxSize:2.5 });
+      }
+    }
     const drag = 1 - Math.min(0.35, (0.02 - upgrades.drag.level*0.0015) * dt * 2);
     vy -= GRAVITY*dt;
     vx *= drag;
@@ -364,10 +372,11 @@ function update(dt){
       } else {
         // 일반 착지: 통통 튀는 바운스 - 수직 속도는 확실히 줄지만 수평 속도는 많이 유지되어
         // 바운스를 거듭하며 점점 낮고 빠르게 튀다가 구르기로 이어진다 (황소날리기류 물리)
-        const bigHit = impactSpeed > 10;
-        screenShake(bigHit?7:3, bigHit?0.2:0.12);
-        spawnParticles(x, h, bigHit?16:8, { color:"#d8c9a8", minSpd:6, maxSpd:bigHit?22:14, minLife:.3, maxLife:.6, upBias:2, minSize:2, maxSize:4.5 });
-        if (bigHit) playSfx('slamImpact', 0.5);
+        // 임계치(binary) 대신 충격 속도에 연속적으로 비례하는 타격감 (더 빠를수록 확실히 더 세게 느껴짐)
+        const impactT = Math.min(1, impactSpeed/45); // 0~1로 정규화
+        screenShake(3 + impactT*11, 0.1 + impactT*0.16);
+        spawnParticles(x, h, Math.round(6 + impactT*22), { color:"#d8c9a8", minSpd:5+impactT*10, maxSpd:12+impactT*22, minLife:.3, maxLife:.6, upBias:2, minSize:2, maxSize:3+impactT*3 });
+        if (impactT > 0.35){ hitStop(0.02 + impactT*0.045); playSfx('slamImpact', 0.35 + impactT*0.5); }
         vy = impactSpeed * (0.48 + upgrades.weight.level*0.015);
         vx *= (0.82 + upgrades.weight.level*0.012); // 맨땅 착지마다 확실히 감속 (약 18% 손실)
         if (vy < 2.5 || vx < 3.5){ state = STATE.GROUND; vy = 0; }

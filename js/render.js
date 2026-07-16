@@ -295,6 +295,12 @@ function draw(){
   }
   let stretchX = 1, stretchY = 1;
   if (isSlamming){ stretchX = 0.82; stretchY = 1.22; }
+  else if (state===STATE.FLY){
+    const speedNow = Math.hypot(vx, vy);
+    const speedT = Math.min(1, speedNow/90);
+    stretchX = 1 + speedT*0.22; // 빠를수록 이동 방향으로 길쭉하게 늘어나며 속도감을 강조
+    stretchY = 1 - speedT*0.12;
+  }
   if (gameOverSpinning){
     const shrink = Math.max(0.15, 1 - (gameOverSpinTimer/0.7));
     stretchX *= shrink; stretchY *= shrink;
@@ -456,12 +462,6 @@ function drawClouds(worldToScreenX, worldToScreenY, localLeft, localRight){
     if (img && img.complete && img.naturalWidth){
       const ar = img.naturalWidth/img.naturalHeight;
       const w = targetW, hh = targetW/ar;
-      // 배경 사진 속 구름과 헷갈리지 않도록 은은한 골드 글로우를 깔아줌 (상호작용 가능한 오브젝트임을 표시)
-      const glow = ctx.createRadialGradient(sx,sy,0, sx,sy, w*0.65);
-      glow.addColorStop(0, "rgba(255,224,140,0.4)");
-      glow.addColorStop(1, "rgba(255,224,140,0)");
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(sx,sy,w*0.65,0,7); ctx.fill();
       ctx.drawImage(img, sx-w/2, sy-hh/2, w, hh);
     }
   }

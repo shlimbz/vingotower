@@ -28,7 +28,41 @@ function spawnItemsUpTo(targetX){
     items.push({ x: nextItemSpawnX + rand(-3,3), h: hh, type, taken:false, cakeKey });
     nextItemSpawnX += rand(spacingMin, spacingMax);
   }
+  spawnCoinTrailsUpTo(targetX);
 }
+
+// 코인을 그냥 흩뿌리지 않고, 아치형/일직선/지그재그 모양의 "코인 트레일"로 배치해서
+// 먹는 재미(디자인적인 궤적)를 살림. 꽤 자주 등장해서 맵이 휑해 보이지 않도록 함
+function spawnCoinTrailsUpTo(targetX){
+  while (nextCoinTrailX < targetX){
+    const pattern = pick([["arc",40],["line",30],["zigzag",30]]);
+    const n = 4 + Math.floor(Math.random()*4); // 4~7개
+    const dx = rand(7, 10);
+    const baseH = rand(6, 70);
+    if (pattern === "arc"){
+      const up = Math.random() < 0.5;
+      const peak = rand(20, 45);
+      for (let i=0;i<n;i++){
+        const tt = i/(n-1);
+        const curve = Math.sin(tt*Math.PI); // 0→1→0 부드러운 아치
+        const hh = baseH + (up ? curve*peak : -curve*peak*0.6);
+        items.push({ x: nextCoinTrailX + i*dx, h: Math.max(1.5,hh), type:"coin", taken:false, cakeKey:null });
+      }
+    } else if (pattern === "line"){
+      for (let i=0;i<n;i++){
+        items.push({ x: nextCoinTrailX + i*dx, h: baseH, type:"coin", taken:false, cakeKey:null });
+      }
+    } else { // zigzag
+      const amp = rand(12, 24);
+      for (let i=0;i<n;i++){
+        const hh = baseH + (i%2===0 ? amp : -amp*0.4);
+        items.push({ x: nextCoinTrailX + i*dx, h: Math.max(1.5,hh), type:"coin", taken:false, cakeKey:null });
+      }
+    }
+    nextCoinTrailX += n*dx + rand(50, 90);
+  }
+}
+
 function spawnPadsUpTo(targetX){
   while (nextPadSpawnX < targetX){
     const type = pick([["boost",1],["sticky",1],["jump",1],["none",2]]);

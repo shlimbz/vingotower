@@ -81,12 +81,12 @@ const BASE_MAX_SPEED = 96 * 1.05; // 업그레이드 없는 기본 상태에서 
 let bank = 0;
 let bestDistance = 0;
 const upgrades = {
-  power:   { name:"발사 파워 증가",     desc:"발사 시 초기 속도가 증가합니다.", level:0, max:8, baseCost:20, costMul:1.35 },
-  drag:    { name:"공기 저항 감소",     desc:"비행 중 속도가 덜 줄어듭니다.",   level:0, max:8, baseCost:20, costMul:1.35 },
-  slam:    { name:"슬램 게이지 충전 속도", desc:"슬램 게이지가 더 빨리 차오릅니다.", level:0, max:6, baseCost:25, costMul:1.4 },
-  weight:  { name:"무게 조절",         desc:"착지 시 감속이 줄어 더 멀리 굴러갑니다.", level:0, max:6, baseCost:25, costMul:1.4 },
-  slamCombo: { name:"슬램 연속 사용", desc:"게이지가 다 차면, 다시 채우지 않고 슬램을 2연속 사용할 수 있습니다.", level:0, max:1, baseCost:80, costMul:1 },
-  revive:  { name:"부활 1회",        desc:"블랙홀에 빨려들어가 게임오버 되어도, 그 자리에서 한 번 다시 날릴 수 있습니다.", level:0, max:1, baseCost:100, costMul:1 },
+  power:   { name:"발사 파워 증가",     desc:"발사 시 초기 속도가 증가합니다.", level:0, max:8, baseCost:34, costMul:1.35 },
+  drag:    { name:"공기 저항 감소",     desc:"비행 중 속도가 덜 줄어듭니다.",   level:0, max:8, baseCost:34, costMul:1.35 },
+  slam:    { name:"슬램 게이지 충전 속도", desc:"슬램 게이지가 더 빨리 차오릅니다.", level:0, max:6, baseCost:42, costMul:1.4 },
+  weight:  { name:"무게 조절",         desc:"착지 시 감속이 줄어 더 멀리 굴러갑니다.", level:0, max:6, baseCost:42, costMul:1.4 },
+  slamCombo: { name:"슬램 연속 사용", desc:"게이지가 다 차면, 다시 채우지 않고 슬램을 2연속 사용할 수 있습니다.", level:0, max:1, baseCost:135, costMul:1 },
+  revive:  { name:"부활 1회",        desc:"블랙홀에 빨려들어가 게임오버 되어도, 그 자리에서 한 번 다시 날릴 수 있습니다.", level:0, max:1, baseCost:170, costMul:1 },
 };
 
 function slamChargeCap(){ return 1 + upgrades.slamCombo.level; }
