@@ -5,7 +5,7 @@
 const SPRITE_BOTTOM_PAD = { ready: 0.024, fly: 0.238, slam: 0.267, stop: 0.143, slide: 0.16 };
 // 각 포즈의 실제 캐릭터 외곽선이 자기 박스를 채우는 비율(fill ratio)이 서로 달라서(특히 대각선 자세는 빈 공간이 많음),
 // 겉보기 크기가 비슷해지도록 실측값 기반으로 보정 배율을 적용
-const SPRITE_SIZE_MULT = { ready: 1.0, fly: 0.99, slam: 1.19, stop: 1.03, slide: 0.97 };
+const SPRITE_SIZE_MULT = { ready: 1.0, fly: 1.72, slam: 1.58, stop: 1.30, slide: 1.60 };
 let grassPatternCache = null;
 
 // 매 프레임 document.getElementById를 반복 호출하지 않도록 미리 참조를 캐싱 (성능 최적화)
@@ -134,7 +134,7 @@ function draw(){
     const tileW = textureH*ar;
     const topY = groundY - GRASS_LINE_FRAC*textureH;
     if (!grassPatternCache){
-      grassPatternCache = ctx.createPattern(grassImg, 'repeat');
+      grassPatternCache = ctx.createPattern(grassImg, 'repeat-x');
     }
     if (grassPatternCache){
       const worldZeroScreenX = worldToScreenX(0); // 월드 x=0 이 화면상 어디에 있는지
@@ -143,9 +143,7 @@ function draw(){
         .scale(tileW/grassImg.naturalWidth, textureH/grassImg.naturalHeight);
       grassPatternCache.setTransform(m);
       ctx.fillStyle = grassPatternCache;
-      // 세로로도 패턴이 자연스럽게 반복되어 바닥까지 다 덮이도록(하나를 억지로 늘리지 않음)
-      const fillBottom = Math.max(localBottom, H);
-      ctx.fillRect(localLeft, topY, localRight-localLeft, fillBottom-topY);
+      ctx.fillRect(localLeft, topY, localRight-localLeft, textureH);
     }
   }
 

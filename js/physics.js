@@ -248,34 +248,32 @@ function update(dt){
   // 상공 구간(260~): 캐릭터 위치는 그대로 유지한 채, 줌만 다시 적당히 들어와서(줌인) 주변이 잘 보이게 함 (아이템/기믹 활용 가능하도록)
   // 그 사이(200~260): 줌만 자연스럽게 전환
   const GROUND_END = 200, SKY_START = 260;
-  const START_CHAR_Y_RATIO = 0.75; // 시작 시점: 화면 아래에서 1/4 지점 높이 (땅 위에 서 있는 자연스러운 위치)
-  const CHAR_Y_RATIO = 0.42; // 지상 구간이 끝난 뒤(및 그 이후) 유지하는 위치: 화면 정중앙보다 살짝 위
+  const GROUND_CHAR_Y_RATIO = 0.75; // 지상 구간에서는 화면 아래에서 1/4 지점(=3/4 지점)에 캐릭터를 고정 - 그 이상 안 올라감
+  const SKY_CHAR_Y_RATIO = 0.42;    // 상공 진입 후: 화면 정중앙보다 살짝 위
+  const GROUND_MIN_ZOOM = 0.55;     // 지상에서 줌아웃의 한계 - 최대로 줄이는 게 아니라 슬램 계획 세울 정도로만
   const FAR_ZOOM = 0.82;
 
-  const teGround = Math.max(0, Math.min(1, h/GROUND_END));
-  const easeGround = teGround*teGround*(3-2*teGround);
-  const charYRatio = h <= GROUND_END
-    ? (START_CHAR_Y_RATIO + (CHAR_Y_RATIO - START_CHAR_Y_RATIO) * easeGround)
-    : CHAR_Y_RATIO;
-  const desiredCharScreenY = H * charYRatio;
-  let targetZoom;
-  let groundZoomAtEnd;
-  {
-    const endCharY = H*CHAR_Y_RATIO;
-    const req = (H - margin - endCharY) / (Math.max(GROUND_END,4) * PX_PER_M);
-    groundZoomAtEnd = Math.max(0.2, Math.min(1, req));
-  }
+  let charYRatio;
   if (h <= GROUND_END){
-    if (h < 4){
-      targetZoom = 1;
-    } else {
-      const required = (H - margin - desiredCharScreenY) / (h * PX_PER_M);
-      targetZoom = Math.max(0.2, Math.min(1, required));
-    }
+    charYRatio = GROUND_CHAR_Y_RATIO;
   } else if (h <= SKY_START){
     const te = (h-GROUND_END)/(SKY_START-GROUND_END);
     const ease = te*te*(3-2*te);
-    targetZoom = groundZoomAtEnd + (FAR_ZOOM - groundZoomAtEnd)*ease;
+    charYRatio = GROUND_CHAR_Y_RATIO + (SKY_CHAR_Y_RATIO - GROUND_CHAR_Y_RATIO)*ease;
+  } else {
+    charYRatio = SKY_CHAR_Y_RATIO;
+  }
+  const desiredCharScreenY = H * charYRatio;
+
+  let targetZoom;
+  if (h <= GROUND_END){
+    const te = Math.max(0, Math.min(1, h/GROUND_END));
+    const ease = te*te*(3-2*te);
+    targetZoom = 1 + (GROUND_MIN_ZOOM - 1)*ease; // 1.0 → 0.55로 완만하게 줌아웃
+  } else if (h <= SKY_START){
+    const te = (h-GROUND_END)/(SKY_START-GROUND_END);
+    const ease = te*te*(3-2*te);
+    targetZoom = GROUND_MIN_ZOOM + (FAR_ZOOM - GROUND_MIN_ZOOM)*ease;
   } else {
     targetZoom = FAR_ZOOM;
   }
@@ -310,9 +308,11 @@ function update(dt){
     if (!isSlamming) slamGauge = Math.min(100, slamGauge + (50 + upgrades.slam.level*10)*dt);
     if (slamGauge >= 100 && slamCharges < slamChargeCap()){ slamGauge = 0; slamCharges++; }
 
-    spawnItemsUpTo(x + 220);
-    spawnPadsUpTo(x + 220);
-    spawnHazardsUpTo(x + 260);
+    // 줌아웃될수록 화면에 더 넓은 월드 범위가 보이므로, 그만큼 미리 스폰해둬야 빈 공간이 안 생김
+    const lookahead = Math.max(220, (W / (PX_PER_M * Math.max(zoom, 0.15))) * 1.4);
+    spawnItemsUpTo(x + lookahead);
+    spawnPadsUpTo(x + lookahead);
+    spawnHazardsUpTo(x + lookahead + 40);
     maybeSpawnMeteor(dt);
     checkItemCollisions();
     checkCloudSlam();
