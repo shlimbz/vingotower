@@ -26,14 +26,13 @@
 
   /* 세로 화면(휴대폰을 세워서 볼 때)에서도 게임은 항상 가로 방향으로 화면 전체를 채우도록 강제 회전 */
   @media screen and (orientation:portrait){
-    #app{
+    body.force-rotate #app{
       position:fixed; top:0; left:0;
-      width:100vh; height:100vw;
       transform:rotate(90deg) translateY(-100%);
       transform-origin:top left;
       padding:6px;
     }
-    #stage{ max-height:96vh; }
+    body.force-rotate #stage{ max-height:96vh; }
   }
 
   #hud{position:absolute;top:0;left:0;right:0;padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;font-weight:700;}
