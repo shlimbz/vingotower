@@ -1,10 +1,5 @@
 // ===== spawn.js =====
-// 멀리/높이 갈수록 코인 가치가 올라감 (거리+고도 둘 다 반영) - 항상 갈수록 좋은 보상이 생기도록
-function coinValueFor(px, hh){
-  const distBonus = Math.floor((px*DISPLAY_SCALE)/300);
-  const altBonus = Math.floor(hh/150);
-  return 1 + distBonus + altBonus;
-}
+// (코인 가치는 항상 동일함 - 멀리/높이 갈수록 보상은 "가치"가 아니라 "밀도/구성"으로 줌)
 
 // ---------- 스폰 ----------
 function spawnItemsUpTo(targetX){
@@ -32,8 +27,7 @@ function spawnItemsUpTo(targetX){
     else if (hRoll < 0.90) hh = rand(40, 90);
     else hh = rand(90, 160);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
-    const coinValue = type==="coin" ? coinValueFor(nextItemSpawnX, hh) : undefined;
-    items.push({ x: nextItemSpawnX + rand(-3,3), h: hh, type, taken:false, cakeKey, coinValue });
+    items.push({ x: nextItemSpawnX + rand(-3,3), h: hh, type, taken:false, cakeKey });
     nextItemSpawnX += rand(spacingMin, spacingMax);
   }
   spawnCoinTrailsUpTo(targetX);
@@ -54,17 +48,17 @@ function spawnCoinTrailsUpTo(targetX){
         const tt = i/(n-1);
         const curve = Math.sin(tt*Math.PI); // 0→1→0 부드러운 아치
         const hh = baseH + (up ? curve*peak : -curve*peak*0.6);
-        items.push({ x: nextCoinTrailX + i*dx, h: Math.max(1.5,hh), type:"coin", taken:false, cakeKey:null, coinValue: coinValueFor(nextCoinTrailX + i*dx, Math.max(1.5,hh)) });
+        items.push({ x: nextCoinTrailX + i*dx, h: Math.max(1.5,hh), type:"coin", taken:false, cakeKey:null });
       }
     } else if (pattern === "line"){
       for (let i=0;i<n;i++){
-        items.push({ x: nextCoinTrailX + i*dx, h: baseH, type:"coin", taken:false, cakeKey:null, coinValue: coinValueFor(nextCoinTrailX + i*dx, baseH) });
+        items.push({ x: nextCoinTrailX + i*dx, h: baseH, type:"coin", taken:false, cakeKey:null });
       }
     } else { // zigzag
       const amp = rand(12, 24);
       for (let i=0;i<n;i++){
         const hh = baseH + (i%2===0 ? amp : -amp*0.4);
-        items.push({ x: nextCoinTrailX + i*dx, h: Math.max(1.5,hh), type:"coin", taken:false, cakeKey:null, coinValue: coinValueFor(nextCoinTrailX + i*dx, Math.max(1.5,hh)) });
+        items.push({ x: nextCoinTrailX + i*dx, h: Math.max(1.5,hh), type:"coin", taken:false, cakeKey:null });
       }
     }
     nextCoinTrailX += n*dx + rand(50, 90);
@@ -100,25 +94,22 @@ function spawnHighAltItemsUpTo(targetX){
     const type = pick([["cake",30],["mango",26],["coin",38],["star",6]]);
     const hh = rand(120,340);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
-    const coinValue = type==="coin" ? coinValueFor(nextSkyItemX, hh) : undefined;
-    items.push({ x: nextSkyItemX + rand(-10,10), h: hh, type, taken:false, cakeKey, coinValue });
-    nextSkyItemX += rand(80,140);
+    items.push({ x: nextSkyItemX + rand(-10,10), h: hh, type, taken:false, cakeKey });
+    nextSkyItemX += rand(45,80);
   }
   while (nextStratoItemX < targetX){
     const type = pick([["cake",22],["mango",22],["coin",48],["star",8]]);
     const hh = rand(360,590);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
-    const coinValue = type==="coin" ? coinValueFor(nextStratoItemX, hh) : undefined;
-    items.push({ x: nextStratoItemX + rand(-15,15), h: hh, type, taken:false, cakeKey, coinValue });
-    nextStratoItemX += rand(160,260);
+    items.push({ x: nextStratoItemX + rand(-15,15), h: hh, type, taken:false, cakeKey });
+    nextStratoItemX += rand(90,150);
   }
   while (nextSpaceItemX < targetX){
     const type = pick([["cake",15],["mango",15],["coin",58],["star",12]]);
     const hh = rand(610,850);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
-    const coinValue = type==="coin" ? coinValueFor(nextSpaceItemX, hh) : undefined;
-    items.push({ x: nextSpaceItemX + rand(-20,20), h: hh, type, taken:false, cakeKey, coinValue });
-    nextSpaceItemX += rand(280,420);
+    items.push({ x: nextSpaceItemX + rand(-20,20), h: hh, type, taken:false, cakeKey });
+    nextSpaceItemX += rand(150,250);
   }
   spawnSpaceConstellationsUpTo(targetX);
 }
@@ -138,7 +129,7 @@ function spawnSpaceConstellationsUpTo(targetX){
         points.push({ x: cx + Math.cos(ang)*R, h: cy + Math.sin(ang)*R*0.7 });
       }
       for (const p of points){
-        items.push({ x: p.x, h: Math.max(605,p.h), type:"coin", taken:false, cakeKey:null, coinValue: coinValueFor(p.x, p.h)*2 });
+        items.push({ x: p.x, h: Math.max(605,p.h), type:"coin", taken:false, cakeKey:null });
       }
       nextConstellationX += R*2 + rand(300,450);
     } else {
@@ -148,7 +139,7 @@ function spawnSpaceConstellationsUpTo(targetX){
       const amp = rand(20,40);
       for (let i=0;i<n;i++){
         const hh = cy + Math.sin(i*0.5)*amp;
-        items.push({ x: cx + i*dx, h: Math.max(605,hh), type:"coin", taken:false, cakeKey:null, coinValue: coinValueFor(cx+i*dx, hh) });
+        items.push({ x: cx + i*dx, h: Math.max(605,hh), type:"coin", taken:false, cakeKey:null });
       }
       nextConstellationX += n*dx + rand(300,450);
     }
@@ -157,9 +148,33 @@ function spawnSpaceConstellationsUpTo(targetX){
 
 // 메테오 (성층권에만 존재): 캐릭터를 추적하지 않고, 그냥 대각선으로 떨어지는 고정 궤적
 function maybeSpawnMeteor(dt){
-  if (meteors.length > 0) return;
+  if (meteorShowerActive) return; // 유성우 진행 중엔 개별 메테오 스폰 안 함
   if (h < 350 || h >= 600) return;
   if (forcedFall || gameOverSpinning) return;
+
+  // 아주 드물게: 유성우 이벤트 (여러 개가 한 번에 쏟아짐, 피하면 큰 코인 보너스)
+  if (meteors.length === 0 && Math.random() < 0.006*dt){
+    const n = 5 + Math.floor(Math.random()*3); // 5~7개
+    const spreadStart = x + 70, spreadEnd = x + 220;
+    for (let i=0;i<n;i++){
+      const side = Math.random()<0.5 ? 1 : -1;
+      const speed = rand(38,58);
+      const fallAngle = rand(0.8, 1.4);
+      meteors.push({
+        x: spreadStart + Math.random()*(spreadEnd-spreadStart), h: h + rand(25,65), life: 0,
+        vx: -side*Math.cos(fallAngle)*speed,
+        vh: -Math.sin(fallAngle)*speed,
+        shower: true,
+      });
+    }
+    meteorShowerActive = true;
+    meteorShowerHit = false;
+    meteorShowerEndX = spreadEnd + 40;
+    showToast("유성우다! 피해라!");
+    return;
+  }
+
+  if (meteors.length > 0) return;
   if (Math.random() < 0.06*dt){ // 성층권에 머무는 동안 아주 가끔 등장
     const side = Math.random()<0.5 ? 1 : -1;
     const speed = rand(38,55);

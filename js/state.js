@@ -33,6 +33,9 @@ let nextPadSpawnX = 60;
 let blackholes = []; // {x,h,r} 우주: 닿으면 게임오버
 let clouds = [];     // {x,h,w,hit} 상공: 슬램으로 찍으면 가속
 let meteors = [];    // {x,h,vx,vh,life} 성층권: 맞으면 강제 낙하
+let meteorShowerActive = false; // 유성우 이벤트 진행 중 여부
+let meteorShowerHit = false;    // 유성우 도중 한 번이라도 맞았는지
+let meteorShowerEndX = 0;       // 이 x를 넘으면 유성우 구간 종료 판정
 let nextCloudSpawnX = 320;
 let nextBlackholeSpawnX = 500;
 let nextSkyItemX = 250, nextStratoItemX = 450, nextSpaceItemX = 700;

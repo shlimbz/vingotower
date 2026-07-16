@@ -10,6 +10,7 @@ function resetRun(){
   coinsThisRun=0; maxDistanceThisRun=0;
   items=[]; padZones=[]; nextItemSpawnX=20; nextArcSpawnX=150; nextCoinTrailX=90; nextPadSpawnX=60;
   blackholes=[]; clouds=[]; meteors=[]; nextCloudSpawnX=320; nextBlackholeSpawnX=500;
+  meteorShowerActive=false; meteorShowerHit=false; meteorShowerEndX=0;
   nextSkyItemX=250; nextStratoItemX=450; nextSpaceItemX=700; nextConstellationX=750;
   forcedFall=false; gameOverSpinning=false; gameOverSpinTimer=0; prevH=0;
   reviveUsedThisRun=false; reviveAvailableThisRun = upgrades.revive.level>=1;
@@ -212,10 +213,23 @@ function updateMeteors(dt){
       showToast("메테오 적중! 강제 낙하");
       screenShake(14, 0.3);
       spawnParticles(x, h, 24, { color:"#ff6a2f", minSpd:10, maxSpd:30, minLife:.3, maxLife:.6, minSize:2.5, maxSize:5 });
+      if (m.shower) meteorShowerHit = true;
       m.dead = true;
     }
   }
   meteors = meteors.filter(m => !m.dead && m.life < 6);
+
+  // 유성우 구간을 다 지나갔는지 확인 (맞았으면 조용히 종료, 안 맞았으면 보너스)
+  if (meteorShowerActive && x > meteorShowerEndX){
+    meteorShowerActive = false;
+    if (!meteorShowerHit){
+      const bonus = 25 + Math.floor(Math.random()*11); // 25~35
+      coinsThisRun += bonus;
+      showToast("유성우 회피 성공! +" + bonus + " 코인");
+      screenShake(6, 0.2);
+      spawnParticles(x, h, 20, { color:"#ffd23f", minSpd:8, maxSpd:24, minLife:.3, maxLife:.6, minSize:2, maxSize:4 });
+    }
+  }
 }
 
 // ---------- 메인 물리 업데이트 ----------
