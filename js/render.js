@@ -3,6 +3,23 @@
 // 각 스프라이트의 투명 여백(특히 캐릭터 발 아래쪽 여백) 비율 - 실측값 기반
 // 이 값만큼 그려지는 위치를 아래로 보정해서 "이미지 바닥"이 아니라 "실제 캐릭터 발"이 지면에 닿도록 함
 const SPRITE_BOTTOM_PAD = { ready: 0.024, fly: 0.238, slam: 0.267, stop: 0.143, slide: 0.16 };
+// 각 포즈의 실제 캐릭터 외곽선이 자기 박스를 채우는 비율(fill ratio)이 서로 달라서(특히 대각선 자세는 빈 공간이 많음),
+// 겉보기 크기가 비슷해지도록 실측값 기반으로 보정 배율을 적용
+const SPRITE_SIZE_MULT = { ready: 1.0, fly: 0.99, slam: 1.19, stop: 1.03, slide: 0.97 };
+let grassPatternCache = null;
+
+// 매 프레임 document.getElementById를 반복 호출하지 않도록 미리 참조를 캐싱 (성능 최적화)
+const HUD_EL = {
+  toast: document.getElementById('toast'),
+  distanceReadout: document.getElementById('distanceReadout'),
+  coinCount: document.getElementById('coinCount'),
+  zoneLabel: document.getElementById('zoneLabel'),
+  slamFill: document.getElementById('slamFill'),
+  slamCharges: document.getElementById('slamCharges'),
+  speedNum: document.getElementById('speedNum'),
+  speedFill: document.getElementById('speedFill'),
+  actionBtn: document.getElementById('actionBtn'),
+};
 
 function currentSpriteKey(){
   if (state === STATE.AIM || state === STATE.POWER) return 'ready';
@@ -33,34 +50,37 @@ function zoneBlendInfo(alt){
   return { idx, nextIdx, t };
 }
 
+const bgBlurCache = new Map();
+function getBlurredBg(img){
+  if (!img || !img.complete || !img.naturalWidth) return null;
+  if (bgBlurCache.has(img)) return bgBlurCache.get(img);
+  // 아주 작은 캔버스에 한 번만 축소해서 그려두면, 나중에 확대해서 쓸 때 자연스럽게 흐려 보임 (저비용 블러 트릭)
+  const small = document.createElement('canvas');
+  const sw = 40, sh = Math.round(sw * img.naturalHeight/img.naturalWidth);
+  small.width = sw; small.height = sh;
+  const sctx = small.getContext('2d');
+  sctx.drawImage(img, 0, 0, sw, sh);
+  bgBlurCache.set(img, small);
+  return small;
+}
+
 function drawCoverImage(img, alpha){
   if (!img || !img.complete || !img.naturalWidth) return;
-  // 세로로 긴 원본 그림을 가로로 넓은 캔버스에 그대로 채우면 지나치게 확대(크롭)되므로,
-  // 세로 기준으로 맞춰서 그림 전체가 잘 보이게 하고, 가로는 필요한 만큼 옆으로 이어붙임
-  const scale = (H / img.naturalHeight) * 1.04;
-  const dw = img.naturalWidth*scale, dh = img.naturalHeight*scale;
-  const dy = (H-dh)/2;
   ctx.globalAlpha = alpha;
-  if (dw >= W){
-    // 한 장으로 폭이 충분하면 중앙 정렬해서 한 번만 그림
-    ctx.drawImage(img, (W-dw)/2, dy, dw, dh);
-  } else {
-    // 폭이 모자라면 옆으로 이어붙여 화면을 채움 (이음새 방지를 위해 한 칸씩 좌우 반전)
-    let startX = ((camX * PX_PER_M * 0.15) % dw);
-    startX = -((-startX % dw + dw) % dw);
-    let tileIndex = Math.round(startX/dw);
-    for (let tx = startX; tx < W; tx += dw, tileIndex++){
-      if (tileIndex % 2 !== 0){
-        ctx.save();
-        ctx.translate(tx+dw/2, 0);
-        ctx.scale(-1,1);
-        ctx.drawImage(img, -dw/2, dy, dw, dh);
-        ctx.restore();
-      } else {
-        ctx.drawImage(img, tx, dy, dw, dh);
-      }
-    }
+
+  // 1) 화면 전체를 은은하게 흐린 버전으로 꽉 채움 (같은 그림을 옆으로 반복하지 않고 자연스러운 여백 처리)
+  const blurSrc = getBlurredBg(img);
+  if (blurSrc){
+    const bscale = Math.max(W/blurSrc.width, H/blurSrc.height);
+    const bw = blurSrc.width*bscale, bh = blurSrc.height*bscale;
+    ctx.drawImage(blurSrc, (W-bw)/2, (H-bh)/2, bw, bh);
   }
+
+  // 2) 원본 그림은 세로 기준으로 맞춰 전체 구도가 보이도록 중앙에 선명하게 그림
+  const scale = (H / img.naturalHeight) * 1.02;
+  const dw = img.naturalWidth*scale, dh = img.naturalHeight*scale;
+  ctx.drawImage(img, (W-dw)/2, (H-dh)/2, dw, dh);
+
   ctx.globalAlpha = 1;
 }
 
@@ -128,28 +148,25 @@ function draw(){
   ctx.fillRect(localLeft, groundY, localRight-localLeft, Math.max(localBottom, H) - groundY);
 
   // 실제 잔디 텍스처를 타일링해서 얹음 (잔디 중앙부가 groundY와 정확히 맞도록 정렬)
-  // 월드 좌표(x=0)를 기준으로 타일을 앵커링해서 카메라가 움직일 때 같이 스크롤되도록 함
-  // 원본이 이음새 없는(seamless) 텍스처가 아니라서, 한 칸씩 좌우 반전시켜 이어붙여 경계가 안 보이게 함
+  // 캔버스 네이티브 CanvasPattern으로 처리: 월드 좌표(x=0)에 기준점을 고정해서
+  // 카메라가 움직이는 만큼만 정확히 스크롤되도록 함 (수동 타일 반복 계산에서 발생했던 앵커링 버그를 근본적으로 제거)
   const grassImg = assetEls.grass;
   if (grassImg && grassImg.complete && grassImg.naturalWidth){
-    // 화면/줌 상태에 관계없이 항상 바닥까지 다 덮이도록 텍스처 높이를 동적으로 확장 (그래도 지면선 정렬은 유지됨)
-    const textureH = Math.max(85, (Math.max(localBottom,H) - groundY) + 30);
+    const textureH = 460; // 가장 많이 줌아웃되는 경우까지 넉넉히 커버하는 고정 높이
     const ar = grassImg.naturalWidth/grassImg.naturalHeight;
     const tileW = textureH*ar;
     const topY = groundY - GRASS_LINE_FRAC*textureH;
-    const worldZeroScreenX = worldToScreenX(0); // 월드 x=0 이 화면상 어디에 있는지
-    let tileIndex = Math.floor((localLeft - worldZeroScreenX)/tileW) - 1;
-    let tx = worldZeroScreenX + tileIndex*tileW;
-    for (; tx < localRight; tx += tileW, tileIndex++){
-      if (tileIndex % 2 !== 0){
-        ctx.save();
-        ctx.translate(tx+tileW/2, 0);
-        ctx.scale(-1,1);
-        ctx.drawImage(grassImg, -tileW/2, topY, tileW, textureH);
-        ctx.restore();
-      } else {
-        ctx.drawImage(grassImg, tx, topY, tileW, textureH);
-      }
+    if (!grassPatternCache){
+      grassPatternCache = ctx.createPattern(grassImg, 'repeat');
+    }
+    if (grassPatternCache){
+      const worldZeroScreenX = worldToScreenX(0); // 월드 x=0 이 화면상 어디에 있는지
+      const m = new DOMMatrix()
+        .translate(worldZeroScreenX, topY)
+        .scale(tileW/grassImg.naturalWidth, textureH/grassImg.naturalHeight);
+      grassPatternCache.setTransform(m);
+      ctx.fillStyle = grassPatternCache;
+      ctx.fillRect(localLeft, topY, localRight-localLeft, textureH);
     }
   }
 
@@ -252,8 +269,10 @@ function draw(){
     const ar = img.naturalWidth/img.naturalHeight;
     // 가로세로 비율이 크게 다른 포즈(예: 옆으로 누운 자세)도 다른 포즈와 체감 크기가 비슷하도록
     // "긴 쪽을 sizePx에 맞추기"가 아니라 "전체 면적을 sizePx^2로 맞추기" 방식을 사용
-    drawW = sizePx * Math.sqrt(ar);
-    drawH = sizePx / Math.sqrt(ar);
+    const sizeMult = SPRITE_SIZE_MULT[spriteKey] || 1.0;
+    const effSize = sizePx * sizeMult;
+    drawW = effSize * Math.sqrt(ar);
+    drawH = effSize / Math.sqrt(ar);
   }
   const bottomPad = (SPRITE_BOTTOM_PAD[spriteKey]||0) * drawH; // 투명 여백만큼 아래로 보정 (실제 렌더 높이 기준)
   ctx.save();
@@ -315,17 +334,17 @@ function draw(){
   }
 
   // 토스트
-  const toastEl = document.getElementById('toast');
+  const toastEl = HUD_EL.toast;
   toastEl.style.opacity = toastTimer>0 ? Math.min(1,toastTimer*2) : 0;
   toastEl.textContent = toastText;
 
   // HUD 텍스트 업데이트
-  document.getElementById('distanceReadout').innerHTML = Math.floor(Math.max(x,0)*DISPLAY_SCALE)+"<span> m</span>";
-  document.getElementById('coinCount').textContent = coinsThisRun;
-  document.getElementById('zoneLabel').textContent = zoneName(alt) + " · " + Math.floor(alt*DISPLAY_SCALE) + "m";
-  document.getElementById('slamFill').style.height = slamGauge+"%";
+  HUD_EL.distanceReadout.innerHTML = Math.floor(Math.max(x,0)*DISPLAY_SCALE)+"<span> m</span>";
+  HUD_EL.coinCount.textContent = coinsThisRun;
+  HUD_EL.zoneLabel.textContent = zoneName(alt) + " · " + Math.floor(alt*DISPLAY_SCALE) + "m";
+  HUD_EL.slamFill.style.height = slamGauge+"%";
   const capNow = slamChargeCap();
-  const pipsEl = document.getElementById('slamCharges');
+  const pipsEl = HUD_EL.slamCharges;
   if (pipsEl.childElementCount !== capNow){
     pipsEl.innerHTML = '';
     for (let i=0;i<capNow;i++){ const d=document.createElement('div'); d.className='pip'; pipsEl.appendChild(d); }
@@ -333,11 +352,11 @@ function draw(){
   [...pipsEl.children].forEach((el,i)=> el.classList.toggle('filled', i < slamCharges));
 
   const speedPct = Math.round(Math.abs(vx)/BASE_MAX_SPEED*100);
-  document.getElementById('speedNum').textContent = speedPct;
-  document.getElementById('speedFill').style.width = Math.min(100, speedPct)+"%";
+  HUD_EL.speedNum.textContent = speedPct;
+  HUD_EL.speedFill.style.width = Math.min(100, speedPct)+"%";
 
   // 액션 버튼 라벨
-  const btn = document.getElementById('actionBtn');
+  const btn = HUD_EL.actionBtn;
   if (state===STATE.AIM) btn.textContent = "각도 고정";
   else if (state===STATE.POWER) btn.textContent = "발사!";
   else if (state===STATE.FLY) btn.textContent = "슬램!";

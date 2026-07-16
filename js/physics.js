@@ -8,6 +8,7 @@ function resetRun(){
   coinsThisRun=0; maxDistanceThisRun=0;
   items=[]; padZones=[]; nextItemSpawnX=20; nextArcSpawnX=150; nextPadSpawnX=60;
   blackholes=[]; clouds=[]; meteors=[]; nextCloudSpawnX=320; nextBlackholeSpawnX=500;
+  nextSkyItemX=250; nextStratoItemX=450; nextSpaceItemX=700;
   forcedFall=false; gameOverSpinning=false; gameOverSpinTimer=0; prevH=0;
   reviveUsedThisRun=false; reviveAvailableThisRun = upgrades.revive.level>=1;
   spinTimer=0; spinAngle=0; starTimer=0;
@@ -239,17 +240,38 @@ function update(dt){
   camX += (x - camX) * camLerp;
 
   const baseGroundYNow = H*GROUND_Y_RATIO;
+  const margin = 28;
 
-  // 캐릭터의 "목표 화면 위치"를 고도에 따라 하나의 연속된 곡선으로 직접 제어함
-  // (예전의 camY 상한 캡 방식은 h가 계속 커지면 캐릭터가 화면 밖으로 나가버리는 버그가 있었음 - 이 방식은 항상 화면 안의 정해진 범위에만 위치하도록 보장함)
-  const TRANSITION_H = 130; // 이 고도까지 서서히 "지상 뷰"에서 "상공 뷰"로 전환
-  const tRaw = Math.max(0, Math.min(1, h/TRANSITION_H));
-  const easeT = tRaw*tRaw*(3-2*tRaw); // smoothstep
-  const FAR_CHAR_Y_RATIO = 0.40; // 상공에서는 화면 정중앙보다 살짝 위
-  const FAR_ZOOM = 0.8;
-  const charYRatio = GROUND_Y_RATIO + (FAR_CHAR_Y_RATIO - GROUND_Y_RATIO) * easeT;
-  const baseTargetZoom = 1 + (FAR_ZOOM - 1) * easeT;
-  const targetZoom = isSlamming ? Math.min(1.15, baseTargetZoom + 0.3) : baseTargetZoom;
+  // 지상 구간(0~200): 캐릭터가 올라갈수록, "땅이 화면 아래쪽에 딱 맞게 보이도록" 필요한 줌 값을
+  // 매 고도마다 직접 역산해서 사용 - 끝점만 맞추는 게 아니라 전 구간에서 항상 땅이 보이도록 보장됨
+  // 상공 구간(260~): 캐릭터가 화면 중앙보다 살짝 위, 줌은 적당히 고정
+  // 그 사이(200~260): 두 모드를 자연스럽게 이어줌
+  const GROUND_END = 200, SKY_START = 260;
+  const FAR_CHAR_Y_RATIO = 0.40, FAR_ZOOM = 0.8;
+  const GROUND_MIN_CHAR_Y_RATIO = 0.16; // 지상 구간 끝에서 캐릭터가 화면 위쪽 16% 지점까지 올라감
+
+  let charYRatio, targetZoom;
+  if (h <= GROUND_END){
+    const te = Math.max(0, Math.min(1, h/GROUND_END));
+    const ease = te*te*(3-2*te);
+    charYRatio = GROUND_Y_RATIO + (GROUND_MIN_CHAR_Y_RATIO - GROUND_Y_RATIO) * ease;
+    const desiredCharScreenY = H*charYRatio;
+    if (h < 4){
+      targetZoom = 1;
+    } else {
+      const required = (H - margin - desiredCharScreenY) / (h * PX_PER_M);
+      targetZoom = Math.max(0.28, Math.min(1, required));
+    }
+  } else if (h <= SKY_START){
+    const te = (h-GROUND_END)/(SKY_START-GROUND_END);
+    const ease = te*te*(3-2*te);
+    charYRatio = GROUND_MIN_CHAR_Y_RATIO + (FAR_CHAR_Y_RATIO - GROUND_MIN_CHAR_Y_RATIO)*ease;
+    targetZoom = 0.32 + (FAR_ZOOM - 0.32)*ease;
+  } else {
+    charYRatio = FAR_CHAR_Y_RATIO;
+    targetZoom = FAR_ZOOM;
+  }
+  if (isSlamming) targetZoom = Math.min(1.15, targetZoom + 0.3);
   zoom += (targetZoom - zoom) * Math.min(1, 3.2*dt);
 
   const desiredCharScreenY = H * charYRatio;

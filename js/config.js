@@ -67,6 +67,7 @@ function resize(){
 }
 let W=360,H=640;
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => { setTimeout(resize, 50); setTimeout(resize, 250); });
 
 // ---------- 상수 ----------
 const GROUND_Y_RATIO = 0.78; // 화면상 지면 위치 비율 (가로모드 - 하늘을 넓게)

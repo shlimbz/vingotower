@@ -43,6 +43,29 @@ function spawnHazardsUpTo(targetX){
     blackholes.push({ x: nextBlackholeSpawnX + rand(-15,15), h: rand(620,900), r: rand(11,15) });
     nextBlackholeSpawnX += rand(320,520);
   }
+  spawnHighAltItemsUpTo(targetX);
+}
+
+// 상공/성층권/우주에도 드물게 아이템을 배치 (땅 위가 아니라 구간 내 고도에 자유롭게, 위로 갈수록 더 희귀하고 간격도 넓게)
+function spawnHighAltItemsUpTo(targetX){
+  while (nextSkyItemX < targetX){
+    const type = pick([["cake",35],["mango",30],["coin",25],["star",6]]);
+    const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
+    items.push({ x: nextSkyItemX + rand(-10,10), h: rand(205,395), type, taken:false, cakeKey });
+    nextSkyItemX += rand(150,240);
+  }
+  while (nextStratoItemX < targetX){
+    const type = pick([["cake",30],["mango",30],["coin",30],["star",8]]);
+    const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
+    items.push({ x: nextStratoItemX + rand(-15,15), h: rand(405,595), type, taken:false, cakeKey });
+    nextStratoItemX += rand(260,400);
+  }
+  while (nextSpaceItemX < targetX){
+    const type = pick([["cake",25],["mango",25],["coin",35],["star",12]]);
+    const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
+    items.push({ x: nextSpaceItemX + rand(-20,20), h: rand(610,850), type, taken:false, cakeKey });
+    nextSpaceItemX += rand(420,600);
+  }
 }
 
 // 메테오 (성층권에만 존재): 캐릭터를 추적하지 않고, 그냥 대각선으로 떨어지는 고정 궤적
