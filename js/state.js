@@ -58,8 +58,12 @@ let particles = []; // {x,h,vx,vh,life,maxLife,color,size,kind}
 let shakeTimer = 0, shakeMag = 0, shakeDur = 0.001;
 let hitStopTimer = 0;
 let launchFxTimer = 0;
-let punchTimer = 0; // 발사 순간의 타격 모션 지속시간
+let punchTimer = 0; // 발사 순간의 타격 모션(캐릭터에 붙어서 움직이는 구간) 지속시간
 const PUNCH_AFTER_DUR = 0.16;
+let punchLingerTimer = 0; // 타격 모션 이후에도 발사 지점에 그대로 남아있는 시간
+let punchWorldX = 0; // 때리는 캐릭터가 고정되어 남는 월드 x좌표(발사 지점)
+let trailHistory = []; // 비행 중 잔상 효과용 최근 위치 기록
+let trailSampleTimer = 0;
 let ringFx = []; // {x,h,life,maxLife,color}
 
 function screenShake(mag, dur){

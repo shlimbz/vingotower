@@ -20,9 +20,9 @@ function spawnItemsUpTo(targetX){
     // 지표면 위주지만, 허공에도 적당히 배치 (고도가 높아질수록 확률이 줄어듬)
     const hRoll = Math.random();
     let hh;
-    if (hRoll < 0.6) hh = rand(1.5, 12);
-    else if (hRoll < 0.82) hh = rand(12, 40);
-    else if (hRoll < 0.94) hh = rand(40, 90);
+    if (hRoll < 0.42) hh = rand(1.5, 12);
+    else if (hRoll < 0.72) hh = rand(12, 40);
+    else if (hRoll < 0.90) hh = rand(40, 90);
     else hh = rand(90, 160);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
     items.push({ x: nextItemSpawnX + rand(-3,3), h: hh, type, taken:false, cakeKey });
@@ -58,19 +58,19 @@ function spawnHighAltItemsUpTo(targetX){
     const type = pick([["cake",35],["mango",30],["coin",25],["star",6]]);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
     items.push({ x: nextSkyItemX + rand(-10,10), h: rand(205,395), type, taken:false, cakeKey });
-    nextSkyItemX += rand(150,240);
+    nextSkyItemX += rand(80,140);
   }
   while (nextStratoItemX < targetX){
     const type = pick([["cake",30],["mango",30],["coin",30],["star",8]]);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
     items.push({ x: nextStratoItemX + rand(-15,15), h: rand(405,595), type, taken:false, cakeKey });
-    nextStratoItemX += rand(260,400);
+    nextStratoItemX += rand(160,260);
   }
   while (nextSpaceItemX < targetX){
     const type = pick([["cake",25],["mango",25],["coin",35],["star",12]]);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
     items.push({ x: nextSpaceItemX + rand(-20,20), h: rand(610,850), type, taken:false, cakeKey });
-    nextSpaceItemX += rand(420,600);
+    nextSpaceItemX += rand(280,420);
   }
 }
 

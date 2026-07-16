@@ -3,6 +3,8 @@
 function resetRun(){
   x=0; h=0; vx=0; vy=0;
   camX=0; camY=0; zoom=1;
+  punchTimer=0; punchLingerTimer=0; punchWorldX=0;
+  trailHistory=[]; trailSampleTimer=0;
   angleDeg=45; angleDir=1; power=0; powerDir=1;
   slamGauge=100; slamCount=0; isSlamming=false; slamCharges=slamChargeCap();
   coinsThisRun=0; maxDistanceThisRun=0;
@@ -40,6 +42,8 @@ function launch(){
   spawnRing(x, h, "rgba(255,255,255,.8)");
   playSfx('launch');
   punchTimer = PUNCH_AFTER_DUR;
+  punchLingerTimer = 4.0; // 타격 후에도 발사 지점에 잠시 더 남아있음
+  punchWorldX = x;
 }
 
 // ---------- 슬램 (게이지가 100% 가득 찼을 때만 사용 가능) ----------
@@ -233,6 +237,7 @@ function update(dt){
   }
   if (launchFxTimer>0) launchFxTimer -= dt;
   if (punchTimer>0) punchTimer -= dt;
+  if (punchLingerTimer>0) punchLingerTimer -= dt;
   updateFx(dt);
 
   // 카메라는 캐릭터를 부드럽게 따라감 (황소키우기 스타일)
@@ -250,7 +255,6 @@ function update(dt){
   const GROUND_END = 200, SKY_START = 260;
   const GROUND_CHAR_Y_RATIO = 0.75; // 지상 구간에서는 화면 아래에서 1/4 지점(=3/4 지점)에 캐릭터를 고정 - 그 이상 안 올라감
   const SKY_CHAR_Y_RATIO = 0.42;    // 상공 진입 후: 화면 정중앙보다 살짝 위
-  const GROUND_MIN_ZOOM = 0.55;     // 지상에서 줌아웃의 한계 - 최대로 줄이는 게 아니라 슬램 계획 세울 정도로만
   const FAR_ZOOM = 0.82;
 
   let charYRatio;
@@ -267,20 +271,25 @@ function update(dt){
 
   let targetZoom;
   if (h <= GROUND_END){
-    const te = Math.max(0, Math.min(1, h/GROUND_END));
-    const ease = te*te*(3-2*te);
-    targetZoom = 1 + (GROUND_MIN_ZOOM - 1)*ease; // 1.0 → 0.55로 완만하게 줌아웃
+    // 지상 구간에서는 무조건 땅과 캐릭터가 같은 화면에 보이도록, 필요한 줌 값을 고도마다 직접 역산
+    if (h < 4){
+      targetZoom = 1;
+    } else {
+      const required = (H - margin - desiredCharScreenY) / (h * PX_PER_M);
+      targetZoom = Math.max(0.15, Math.min(1, required));
+    }
   } else if (h <= SKY_START){
     const te = (h-GROUND_END)/(SKY_START-GROUND_END);
     const ease = te*te*(3-2*te);
-    targetZoom = GROUND_MIN_ZOOM + (FAR_ZOOM - GROUND_MIN_ZOOM)*ease;
+    const groundEndZoom = Math.max(0.15, Math.min(1, (H - margin - H*GROUND_CHAR_Y_RATIO) / (GROUND_END * PX_PER_M)));
+    targetZoom = groundEndZoom + (FAR_ZOOM - groundEndZoom)*ease;
   } else {
     targetZoom = FAR_ZOOM;
   }
   if (isSlamming) targetZoom = Math.min(1.15, targetZoom + 0.3);
   zoom += (targetZoom - zoom) * Math.min(1, 3.2*dt);
 
-  const camYTarget = h - (baseGroundYNow - desiredCharScreenY) / (PX_PER_M * Math.max(zoom, 0.3));
+  const camYTarget = h - (baseGroundYNow - desiredCharScreenY) / (PX_PER_M * Math.max(zoom, 0.12));
   camY += (camYTarget - camY) * camLerp;
 
   if (hitStopTimer>0){ hitStopTimer -= dt; return; } // 타격 정지 프레임 - 물리는 잠시 멈춤
@@ -299,6 +308,12 @@ function update(dt){
   }
   else if (state === STATE.FLY){
     prevH = h;
+    trailSampleTimer -= dt;
+    if (trailSampleTimer <= 0){
+      trailSampleTimer = 0.035;
+      trailHistory.push({ x, h, isSlamming });
+      if (trailHistory.length > 6) trailHistory.shift();
+    }
     const drag = 1 - Math.min(0.35, (0.02 - upgrades.drag.level*0.0015) * dt * 2);
     vy -= GRAVITY*dt;
     vx *= drag;
@@ -325,6 +340,7 @@ function update(dt){
       const impactSpeed = Math.abs(vy);
       h = 0;
       forcedFall = false;
+      checkPadCollision(); // 착지(바운스) 순간마다 발판 판정 - 예전엔 완전히 구르기 상태일 때만 체크해서 튕기는 도중엔 발판이 무시되는 버그가 있었음
       if (isSlamming){
         isSlamming = false;
         stopSlamWhoosh();

@@ -5,7 +5,7 @@
 const SPRITE_BOTTOM_PAD = { ready: 0.024, fly: 0.238, slam: 0.267, stop: 0.143, slide: 0.16 };
 // 각 포즈의 실제 캐릭터 외곽선이 자기 박스를 채우는 비율(fill ratio)이 서로 달라서(특히 대각선 자세는 빈 공간이 많음),
 // 겉보기 크기가 비슷해지도록 실측값 기반으로 보정 배율을 적용
-const SPRITE_SIZE_MULT = { ready: 1.0, fly: 1.72, slam: 1.58, stop: 1.30, slide: 1.60 };
+const SPRITE_SIZE_MULT = { ready: 1.0, fly: 1.72, slam: 1.58, stop: 1.30, slide: 1.15 };
 let grassPatternCache = null;
 
 // 매 프레임 document.getElementById를 반복 호출하지 않도록 미리 참조를 캐싱 (성능 최적화)
@@ -129,7 +129,7 @@ function draw(){
   // 카메라가 움직이는 만큼만 정확히 스크롤되도록 함 (수동 타일 반복 계산에서 발생했던 앵커링 버그를 근본적으로 제거)
   const grassImg = assetEls.grass;
   if (grassImg && grassImg.complete && grassImg.naturalWidth){
-    const textureH = 90; // 원래 비율에 맞는 텍스처 크기 (확대되어 보이지 않도록)
+    const textureH = 210; // 원본 잔디+흙 텍스처를 더 많이 사용해서 화면 아래쪽까지 실제 그림으로 덮음
     const ar = grassImg.naturalWidth/grassImg.naturalHeight;
     const tileW = textureH*ar;
     const topY = groundY - GRASS_LINE_FRAC*textureH;
@@ -219,6 +219,25 @@ function draw(){
     }
   }
 
+  // 비행 잔상 (모션 트레일) - 캐릭터 뒤로 살짝 흐릿하게 남는 자국
+  if (state === STATE.FLY && trailHistory.length > 1){
+    const trailImg = isSlamming ? imgEls.slam : imgEls.fly;
+    if (trailImg && trailImg.complete && trailImg.naturalWidth){
+      const tAr = trailImg.naturalWidth/trailImg.naturalHeight;
+      const tMult = isSlamming ? (SPRITE_SIZE_MULT.slam||1) : (SPRITE_SIZE_MULT.fly||1);
+      const tSizePx = 11*PX_PER_M*tMult;
+      const tW = tSizePx*Math.sqrt(tAr), tH = tSizePx/Math.sqrt(tAr);
+      for (let i=0;i<trailHistory.length-1;i++){
+        const s = trailHistory[i];
+        const a = (i+1)/trailHistory.length * 0.28; // 오래된 잔상일수록 흐릿함
+        const sx = worldToScreenX(s.x), sy = worldToScreenY(s.h);
+        ctx.globalAlpha = a;
+        ctx.drawImage(trailImg, sx-tW/2, sy-tH/2, tW, tH);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
   // 캐릭터
   const px = worldToScreenX(x), py = worldToScreenY(h);
   const spriteKey = currentSpriteKey();
@@ -226,16 +245,26 @@ function draw(){
   const sizeM = 11; // 캐릭터 표시 크기(미터 환산)
   const sizePx = sizeM*PX_PER_M;
 
-  // 때리는 캐릭터: 조준/파워 단계에는 항상 준비 자세로 서 있다가, 발사 순간에만 타격 모션 재생
+  // 때리는 캐릭터: 조준/파워 단계에는 항상 준비 자세로 서 있다가, 발사 순간 타격 모션 재생 후
+  // 잠시 발사 지점에 그대로 남아있음 (캐릭터를 따라가지 않고 그 자리에 고정됨)
   const showPuncherIdle = (state===STATE.AIM || state===STATE.POWER);
-  if (showPuncherIdle || punchTimer > 0){
-    const punchImg = punchTimer > 0 ? assetEls.attackAfter : assetEls.attackReady;
+  if (showPuncherIdle || punchTimer > 0 || punchLingerTimer > 0){
+    const punchImg = (punchTimer > 0 || punchLingerTimer > 0) ? assetEls.attackAfter : assetEls.attackReady;
     const pSize = sizePx * 1.55;
-    // 준비 자세는 살짝 뒤로, 타격 순간엔 캐릭터에 바짝 붙임
-    const offsetX = punchTimer > 0 ? -sizePx*0.55 : -sizePx*1.15;
+    let anchorPx, anchorPy, offsetX;
+    if (punchLingerTimer > 0 && punchTimer <= 0){
+      // 타격 이후: 캐릭터가 아니라 발사 지점(월드 좌표, 지면 높이)에 고정
+      anchorPx = worldToScreenX(punchWorldX);
+      anchorPy = worldToScreenY(0);
+      offsetX = -sizePx*1.15;
+    } else {
+      anchorPx = px;
+      anchorPy = py;
+      offsetX = punchTimer > 0 ? -sizePx*0.55 : -sizePx*1.15;
+    }
     if (punchImg && punchImg.complete && punchImg.naturalWidth>0){
       ctx.save();
-      ctx.translate(px + offsetX, py - sizePx*0.5);
+      ctx.translate(anchorPx + offsetX, anchorPy - sizePx*0.5);
       ctx.drawImage(punchImg, -pSize/2, -pSize/2, pSize, pSize);
       ctx.restore();
     }
