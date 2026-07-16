@@ -2,7 +2,7 @@
 // ---------- 발사 ----------
 function resetRun(){
   x=0; h=0; vx=0; vy=0;
-  camX=0; camY=0; zoom=1; cameraFarMode=false;
+  camX=0; camY=0; zoom=1;
   angleDeg=45; angleDir=1; power=0; powerDir=1;
   slamGauge=100; slamCount=0; isSlamming=false; slamCharges=slamChargeCap();
   coinsThisRun=0; maxDistanceThisRun=0;
@@ -239,26 +239,22 @@ function update(dt){
   camX += (x - camX) * camLerp;
 
   const baseGroundYNow = H*GROUND_Y_RATIO;
-  const groundMarginPx = 30;
 
-  // 지상 모드 ↔ 상공 모드 전환 (히스테리시스: 올라갈 땐 220에서, 내려올 땐 160에서 전환 → 경계에서 떨림 방지)
-  if (!cameraFarMode && h > 220) cameraFarMode = true;
-  else if (cameraFarMode && h < 160) cameraFarMode = false;
-
-  let camYTarget, targetZoom;
-  if (!cameraFarMode){
-    // 지상 모드: 캐릭터가 올라갈수록 줌아웃해서 캐릭터와 그 아래 땅이 항상 같이 보이도록 함
-    targetZoom = isSlamming ? 1.15 : Math.max(0.42, 1 - h/230);
-    const camYCap = Math.max(4, (H - groundMarginPx - baseGroundYNow) / (PX_PER_M * Math.max(targetZoom, 0.4)));
-    camYTarget = Math.min(h, camYCap);
-  } else {
-    // 상공 모드: 땅을 억지로 보여주지 않고, 캐릭터가 화면 정중앙보다 살짝 위에 오도록 하고 적당히 줌인
-    targetZoom = isSlamming ? 1.15 : 0.85;
-    const desiredScreenY = H*0.42;
-    camYTarget = h - (baseGroundYNow - desiredScreenY) / (PX_PER_M * Math.max(zoom, 0.3));
-  }
-  camY += (camYTarget - camY) * camLerp;
+  // 캐릭터의 "목표 화면 위치"를 고도에 따라 하나의 연속된 곡선으로 직접 제어함
+  // (예전의 camY 상한 캡 방식은 h가 계속 커지면 캐릭터가 화면 밖으로 나가버리는 버그가 있었음 - 이 방식은 항상 화면 안의 정해진 범위에만 위치하도록 보장함)
+  const TRANSITION_H = 130; // 이 고도까지 서서히 "지상 뷰"에서 "상공 뷰"로 전환
+  const tRaw = Math.max(0, Math.min(1, h/TRANSITION_H));
+  const easeT = tRaw*tRaw*(3-2*tRaw); // smoothstep
+  const FAR_CHAR_Y_RATIO = 0.40; // 상공에서는 화면 정중앙보다 살짝 위
+  const FAR_ZOOM = 0.8;
+  const charYRatio = GROUND_Y_RATIO + (FAR_CHAR_Y_RATIO - GROUND_Y_RATIO) * easeT;
+  const baseTargetZoom = 1 + (FAR_ZOOM - 1) * easeT;
+  const targetZoom = isSlamming ? Math.min(1.15, baseTargetZoom + 0.3) : baseTargetZoom;
   zoom += (targetZoom - zoom) * Math.min(1, 3.2*dt);
+
+  const desiredCharScreenY = H * charYRatio;
+  const camYTarget = h - (baseGroundYNow - desiredCharScreenY) / (PX_PER_M * Math.max(zoom, 0.3));
+  camY += (camYTarget - camY) * camLerp;
 
   if (hitStopTimer>0){ hitStopTimer -= dt; return; } // 타격 정지 프레임 - 물리는 잠시 멈춤
 

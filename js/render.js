@@ -8,7 +8,7 @@ function currentSpriteKey(){
   if (state === STATE.AIM || state === STATE.POWER) return 'ready';
   if (state === STATE.FLY) return isSlamming ? 'slam' : 'fly';
   if (state === STATE.GROUND) return vx < 10 ? 'slide' : 'fly';
-  return 'stop';
+  return 'slide'; // 완전히 멈춰도(STOPPED) 자세를 바꾸지 않고 그대로 유지
 }
 function currentSprite(){
   return imgEls[currentSpriteKey()];
@@ -35,11 +35,32 @@ function zoneBlendInfo(alt){
 
 function drawCoverImage(img, alpha){
   if (!img || !img.complete || !img.naturalWidth) return;
-  const scale = Math.max(W/img.naturalWidth, H/img.naturalHeight);
+  // 세로로 긴 원본 그림을 가로로 넓은 캔버스에 그대로 채우면 지나치게 확대(크롭)되므로,
+  // 세로 기준으로 맞춰서 그림 전체가 잘 보이게 하고, 가로는 필요한 만큼 옆으로 이어붙임
+  const scale = (H / img.naturalHeight) * 1.04;
   const dw = img.naturalWidth*scale, dh = img.naturalHeight*scale;
-  const dx = (W-dw)/2, dy = (H-dh)/2;
+  const dy = (H-dh)/2;
   ctx.globalAlpha = alpha;
-  ctx.drawImage(img, dx, dy, dw, dh);
+  if (dw >= W){
+    // 한 장으로 폭이 충분하면 중앙 정렬해서 한 번만 그림
+    ctx.drawImage(img, (W-dw)/2, dy, dw, dh);
+  } else {
+    // 폭이 모자라면 옆으로 이어붙여 화면을 채움 (이음새 방지를 위해 한 칸씩 좌우 반전)
+    let startX = ((camX * PX_PER_M * 0.15) % dw);
+    startX = -((-startX % dw + dw) % dw);
+    let tileIndex = Math.round(startX/dw);
+    for (let tx = startX; tx < W; tx += dw, tileIndex++){
+      if (tileIndex % 2 !== 0){
+        ctx.save();
+        ctx.translate(tx+dw/2, 0);
+        ctx.scale(-1,1);
+        ctx.drawImage(img, -dw/2, dy, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.drawImage(img, tx, dy, dw, dh);
+      }
+    }
+  }
   ctx.globalAlpha = 1;
 }
 
@@ -215,9 +236,9 @@ function draw(){
   const showPuncherIdle = (state===STATE.AIM || state===STATE.POWER);
   if (showPuncherIdle || punchTimer > 0){
     const punchImg = punchTimer > 0 ? assetEls.attackAfter : assetEls.attackReady;
-    const pSize = sizePx * 1.05;
+    const pSize = sizePx * 1.55;
     // 준비 자세는 살짝 뒤로, 타격 순간엔 캐릭터에 바짝 붙임
-    const offsetX = punchTimer > 0 ? -sizePx*0.42 : -sizePx*0.95;
+    const offsetX = punchTimer > 0 ? -sizePx*0.55 : -sizePx*1.15;
     if (punchImg && punchImg.complete && punchImg.naturalWidth>0){
       ctx.save();
       ctx.translate(px + offsetX, py - sizePx*0.5);
@@ -229,7 +250,10 @@ function draw(){
   let drawW = sizePx, drawH = sizePx;
   if (img.naturalWidth>0 && img.naturalHeight>0){
     const ar = img.naturalWidth/img.naturalHeight;
-    if (ar > 1) drawH = sizePx/ar; else drawW = sizePx*ar;
+    // 가로세로 비율이 크게 다른 포즈(예: 옆으로 누운 자세)도 다른 포즈와 체감 크기가 비슷하도록
+    // "긴 쪽을 sizePx에 맞추기"가 아니라 "전체 면적을 sizePx^2로 맞추기" 방식을 사용
+    drawW = sizePx * Math.sqrt(ar);
+    drawH = sizePx / Math.sqrt(ar);
   }
   const bottomPad = (SPRITE_BOTTOM_PAD[spriteKey]||0) * drawH; // 투명 여백만큼 아래로 보정 (실제 렌더 높이 기준)
   ctx.save();
