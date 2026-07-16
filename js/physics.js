@@ -242,39 +242,40 @@ function update(dt){
   const baseGroundYNow = H*GROUND_Y_RATIO;
   const margin = 28;
 
-  // 지상 구간(0~200): 캐릭터가 올라갈수록, "땅이 화면 아래쪽에 딱 맞게 보이도록" 필요한 줌 값을
-  // 매 고도마다 직접 역산해서 사용 - 끝점만 맞추는 게 아니라 전 구간에서 항상 땅이 보이도록 보장됨
-  // 상공 구간(260~): 캐릭터가 화면 중앙보다 살짝 위, 줌은 적당히 고정
-  // 그 사이(200~260): 두 모드를 자연스럽게 이어줌
+  // 지상 구간(0~200): 캐릭터가 올라갈수록 부드럽게 줌아웃해서 캐릭터+땅이 항상 같이 보이도록,
+  // 필요한 줌 값을 매 고도마다 직접 역산해서 사용 (끝점만 맞추는 게 아니라 전 구간 보장)
+  // 이때 캐릭터는 화면 정중앙보다 살짝 위(약 42% 지점)까지만 올라가고 그 이상은 안 올라감
+  // 상공 구간(260~): 캐릭터 위치는 그대로 유지한 채, 줌만 다시 적당히 들어와서(줌인) 주변이 잘 보이게 함 (아이템/기믹 활용 가능하도록)
+  // 그 사이(200~260): 줌만 자연스럽게 전환
   const GROUND_END = 200, SKY_START = 260;
-  const FAR_CHAR_Y_RATIO = 0.40, FAR_ZOOM = 0.8;
-  const GROUND_MIN_CHAR_Y_RATIO = 0.16; // 지상 구간 끝에서 캐릭터가 화면 위쪽 16% 지점까지 올라감
+  const CHAR_Y_RATIO = 0.42; // 화면 정중앙(0.5)보다 살짝 위 - 지상 구간이 끝난 뒤에도 이 위치를 유지
+  const FAR_ZOOM = 0.82;
 
-  let charYRatio, targetZoom;
+  const charYRatio = CHAR_Y_RATIO;
+  const desiredCharScreenY = H * charYRatio;
+  let targetZoom;
+  let groundZoomAtEnd;
+  {
+    const req = (H - margin - desiredCharScreenY) / (Math.max(GROUND_END,4) * PX_PER_M);
+    groundZoomAtEnd = Math.max(0.2, Math.min(1, req));
+  }
   if (h <= GROUND_END){
-    const te = Math.max(0, Math.min(1, h/GROUND_END));
-    const ease = te*te*(3-2*te);
-    charYRatio = GROUND_Y_RATIO + (GROUND_MIN_CHAR_Y_RATIO - GROUND_Y_RATIO) * ease;
-    const desiredCharScreenY = H*charYRatio;
     if (h < 4){
       targetZoom = 1;
     } else {
       const required = (H - margin - desiredCharScreenY) / (h * PX_PER_M);
-      targetZoom = Math.max(0.28, Math.min(1, required));
+      targetZoom = Math.max(0.2, Math.min(1, required));
     }
   } else if (h <= SKY_START){
     const te = (h-GROUND_END)/(SKY_START-GROUND_END);
     const ease = te*te*(3-2*te);
-    charYRatio = GROUND_MIN_CHAR_Y_RATIO + (FAR_CHAR_Y_RATIO - GROUND_MIN_CHAR_Y_RATIO)*ease;
-    targetZoom = 0.32 + (FAR_ZOOM - 0.32)*ease;
+    targetZoom = groundZoomAtEnd + (FAR_ZOOM - groundZoomAtEnd)*ease;
   } else {
-    charYRatio = FAR_CHAR_Y_RATIO;
     targetZoom = FAR_ZOOM;
   }
   if (isSlamming) targetZoom = Math.min(1.15, targetZoom + 0.3);
   zoom += (targetZoom - zoom) * Math.min(1, 3.2*dt);
 
-  const desiredCharScreenY = H * charYRatio;
   const camYTarget = h - (baseGroundYNow - desiredCharScreenY) / (PX_PER_M * Math.max(zoom, 0.3));
   camY += (camYTarget - camY) * camLerp;
 

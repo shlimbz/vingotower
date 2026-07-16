@@ -50,34 +50,11 @@ function zoneBlendInfo(alt){
   return { idx, nextIdx, t };
 }
 
-const bgBlurCache = new Map();
-function getBlurredBg(img){
-  if (!img || !img.complete || !img.naturalWidth) return null;
-  if (bgBlurCache.has(img)) return bgBlurCache.get(img);
-  // 아주 작은 캔버스에 한 번만 축소해서 그려두면, 나중에 확대해서 쓸 때 자연스럽게 흐려 보임 (저비용 블러 트릭)
-  const small = document.createElement('canvas');
-  const sw = 40, sh = Math.round(sw * img.naturalHeight/img.naturalWidth);
-  small.width = sw; small.height = sh;
-  const sctx = small.getContext('2d');
-  sctx.drawImage(img, 0, 0, sw, sh);
-  bgBlurCache.set(img, small);
-  return small;
-}
-
 function drawCoverImage(img, alpha){
   if (!img || !img.complete || !img.naturalWidth) return;
   ctx.globalAlpha = alpha;
-
-  // 1) 화면 전체를 은은하게 흐린 버전으로 꽉 채움 (같은 그림을 옆으로 반복하지 않고 자연스러운 여백 처리)
-  const blurSrc = getBlurredBg(img);
-  if (blurSrc){
-    const bscale = Math.max(W/blurSrc.width, H/blurSrc.height);
-    const bw = blurSrc.width*bscale, bh = blurSrc.height*bscale;
-    ctx.drawImage(blurSrc, (W-bw)/2, (H-bh)/2, bw, bh);
-  }
-
-  // 2) 원본 그림은 세로 기준으로 맞춰 전체 구도가 보이도록 중앙에 선명하게 그림
-  const scale = (H / img.naturalHeight) * 1.02;
+  // 화면을 완전히 채우도록 꽉 차는 비율로 확대(cover) - 이음새나 흐림 처리 없이 한 장을 자연스럽게 채움
+  const scale = Math.max(W/img.naturalWidth, H/img.naturalHeight);
   const dw = img.naturalWidth*scale, dh = img.naturalHeight*scale;
   ctx.drawImage(img, (W-dw)/2, (H-dh)/2, dw, dh);
 

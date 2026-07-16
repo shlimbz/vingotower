@@ -57,7 +57,21 @@ const BG_ZONE_ORDER = ['ground','sky','strato','space'];
 // ---------- 캔버스 세팅 ----------
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
+function applyOrientationLayout(){
+  const app = document.getElementById('app');
+  const isPortrait = window.innerWidth < window.innerHeight;
+  document.body.classList.toggle('force-rotate', isPortrait);
+  if (isPortrait){
+    // vh/vw는 모바일 브라우저 주소창 등으로 인해 부정확할 수 있어, 실제 창 크기를 직접 픽셀로 지정
+    app.style.width = window.innerHeight + 'px';
+    app.style.height = window.innerWidth + 'px';
+  } else {
+    app.style.width = '';
+    app.style.height = '';
+  }
+}
 function resize(){
+  applyOrientationLayout();
   const stage = document.getElementById('stage');
   const r = stage.getBoundingClientRect();
   canvas.width = r.width * devicePixelRatio;

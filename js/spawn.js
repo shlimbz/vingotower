@@ -17,7 +17,13 @@ function spawnItemsUpTo(targetX){
 
     const type = pick([["coin",coinWeight],["cake",cakeWeight],["mango",mangoWeight],["star",starWeight]]);
     // 지표면 위주로 낮게 배치 (가끔만 살짝 높은 곳)
-    const hh = Math.random() < 0.8 ? rand(1.5, 10) : rand(10, 24);
+    // 지표면 위주지만, 허공에도 적당히 배치 (고도가 높아질수록 확률이 줄어듬)
+    const hRoll = Math.random();
+    let hh;
+    if (hRoll < 0.6) hh = rand(1.5, 12);
+    else if (hRoll < 0.82) hh = rand(12, 40);
+    else if (hRoll < 0.94) hh = rand(40, 90);
+    else hh = rand(90, 160);
     const cakeKey = type==="cake" ? CAKE_KEYS[Math.floor(Math.random()*CAKE_KEYS.length)] : null;
     items.push({ x: nextItemSpawnX + rand(-3,3), h: hh, type, taken:false, cakeKey });
     nextItemSpawnX += rand(spacingMin, spacingMax);
@@ -35,7 +41,7 @@ function spawnPadsUpTo(targetX){
 function spawnHazardsUpTo(targetX){
   // 구름 (상공, 100~195): 비교적 자주 배치, 슬램으로 찍으면 가속 발판 역할
   while (nextCloudSpawnX < targetX){
-    clouds.push({ x: nextCloudSpawnX + rand(-8,8), h: rand(210,390), w: rand(24,36), key: CLOUD_KEYS[Math.floor(Math.random()*CLOUD_KEYS.length)], hit:false });
+    clouds.push({ x: nextCloudSpawnX + rand(-8,8), h: rand(240,430), w: rand(24,36), key: CLOUD_KEYS[Math.floor(Math.random()*CLOUD_KEYS.length)], hit:false });
     nextCloudSpawnX += rand(55,100);
   }
   // 블랙홀 (우주, 320~480): 뜨문뜨문 희귀하게 배치, 닿으면 게임오버
