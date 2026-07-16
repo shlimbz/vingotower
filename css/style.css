@@ -51,7 +51,7 @@
   #speedFill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent3),var(--accent));transition:width .08s linear;border-radius:5px;}
   #speedNum{font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;}
 
-  #zoneLabel{font-weight:700;letter-spacing:.2px;}
+  #zoneLabel{font-weight:700;letter-spacing:.2px;margin-top:46px;}
 
   #slamWrap{position:absolute;bottom:96px;left:14px;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;}
   #slamLabel{font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;font-weight:700;}
