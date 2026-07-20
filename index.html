@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>이상현상 복도</title>
+<title>이상현상 복도 v.10</title>
 <style>
   html,body{
     margin:0; padding:0; width:100%; height:100%;
@@ -301,11 +301,11 @@
   // ---------------------------------------------------------------
   // renderer / scene / camera  (perf: capped pixel ratio, no AA, cheap fog)
   // ---------------------------------------------------------------
-  var FOG_COLOR = 0x6b5a38;
+  var FOG_COLOR = 0x8f8050;
 
   var scene = new THREE.Scene();
   scene.background = new THREE.Color(FOG_COLOR);
-  scene.fog = new THREE.FogExp2(FOG_COLOR, 0.06);
+  scene.fog = new THREE.FogExp2(FOG_COLOR, 0.05);
 
   var camera = new THREE.PerspectiveCamera(72, window.innerWidth/window.innerHeight, 0.05, 100);
   camera.rotation.order = 'YXZ';
@@ -468,7 +468,7 @@
     var c = document.createElement('canvas'); c.width=64; c.height=64;
     var ctx = c.getContext('2d');
     var g = ctx.createRadialGradient(32,32,4,32,32,30);
-    g.addColorStop(0,'rgba(0,0,0,0.45)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    g.addColorStop(0,'rgba(0,0,0,0.72)'); g.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle = g; ctx.fillRect(0,0,64,64);
     return new THREE.CanvasTexture(c);
   }
@@ -478,9 +478,9 @@
   var ceilTex = makeCeilTexture();  ceilTex.repeat.set(10, 10);
 
   // perf: Lambert (cheap diffuse-only lighting) instead of Standard (PBR) for big surfaces
-  var wallMat  = new THREE.MeshLambertMaterial({map:wallTex});
-  var floorMat = new THREE.MeshLambertMaterial({map:floorTex});
-  var ceilMat  = new THREE.MeshLambertMaterial({map:ceilTex});
+  var wallMat  = new THREE.MeshStandardMaterial({map:wallTex, roughness:0.92, metalness:0});
+  var floorMat = new THREE.MeshStandardMaterial({map:floorTex, roughness:0.96});
+  var ceilMat  = new THREE.MeshStandardMaterial({map:ceilTex, roughness:0.85});
   var fixtureMat = new THREE.MeshBasicMaterial({color:0xfff3cf});
   var fixtureDeadMat = new THREE.MeshBasicMaterial({color:0x30291a});
 
@@ -531,8 +531,8 @@
   addWall(-2,12, WT, 24+WT);          // west outer (leg1)
   addWall(26,12, WT, 24+WT);          // east outer (leg3)
   addWall(12,24, 28+WT, WT);          // north outer (leg2)
-  addWall(0,0,  4+WT, WT);            // south cap — EXIT (leg1)
-  addWall(24,0, 4+WT, WT);            // south cap — START (leg3)
+  addWall(-1.475,0, 1.45, WT);  addWall(1.475,0, 1.45, WT);   // south cap — EXIT (leg1), gap at x[-0.75,0.75]
+  addWall(22.525,0, 1.45, WT);  addWall(25.475,0, 1.45, WT);  // south cap — START (leg3), gap at x[23.25,24.75]
   addWall(2,10,  WT, 20+WT);          // inner wall leg1/void
   addWall(22,10, WT, 20+WT);          // inner wall leg3/void
   var leg2InnerWall = addWall(12,20, 20+WT, WT);   // inner wall leg2/void (mirror + trash mounted here)
@@ -550,12 +550,34 @@
   }
 
   // ---------------------------------------------------------------
-  // exit — a plain black doorway-shaped opening (no physical door)
+  // door portals — recessed openings with visible side walls that
+  // fade to black, reading as a real pit/abyss instead of a flat decal
   // ---------------------------------------------------------------
-  var voidMat = new THREE.MeshBasicMaterial({color:0x000000});
-  var exitVoidMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.2), voidMat);
-  exitVoidMesh.position.set(0, 1.1, 0.24);
-  scene.add(exitVoidMesh);
+  function makeVoidPortal(cx, cz, width, height, depth){
+    var group = new THREE.Group();
+    group.position.set(cx, 0, cz);
+    var halfW = width/2, sideThick = 0.06;
+    var lw = new THREE.Mesh(new THREE.BoxGeometry(sideThick, height, depth), wallMat);
+    lw.position.set(-halfW, height/2, -depth/2);
+    group.add(lw);
+    var rw = new THREE.Mesh(new THREE.BoxGeometry(sideThick, height, depth), wallMat);
+    rw.position.set(halfW, height/2, -depth/2);
+    group.add(rw);
+    var tw = new THREE.Mesh(new THREE.BoxGeometry(width, sideThick, depth), wallMat);
+    tw.position.set(0, height, -depth/2);
+    group.add(tw);
+    var floorStrip = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), floorMat);
+    floorStrip.rotation.x = -Math.PI/2;
+    floorStrip.position.set(0, 0.006, -depth/2);
+    group.add(floorStrip);
+    var backCap = new THREE.Mesh(new THREE.PlaneGeometry(width, height), new THREE.MeshBasicMaterial({color:0x000000}));
+    backCap.position.set(0, height/2, -depth+0.01);
+    group.add(backCap);
+    scene.add(group);
+    return group;
+  }
+  makeVoidPortal(0, 0.2, 1.5, 2.2, 0.55);   // exit (leg1)
+  makeVoidPortal(24, 0.2, 1.5, 2.2, 0.55);  // entrance (leg3)
 
   var signMat = new THREE.MeshBasicMaterial({map:makeSignTexture()});
   var sign = new THREE.Mesh(new THREE.PlaneGeometry(1.0,0.5), signMat);
@@ -568,14 +590,6 @@
   var arrowMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.5,0.25), arrowMat);
   arrowMesh.position.set(0, 2.05, 0.22);
   scene.add(arrowMesh);
-
-  // ---------------------------------------------------------------
-  // entrance — same plain black opening (leg3, where you return when an
-  // anomaly is spotted)
-  // ---------------------------------------------------------------
-  var entranceVoidMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.2), voidMat);
-  entranceVoidMesh.position.set(24, 1.1, 0.24);
-  scene.add(entranceVoidMesh);
 
   // ---------------------------------------------------------------
   // 문 (door with number plaque) — near START, east wall of leg3
@@ -718,14 +732,19 @@
   // footstep audio (synthesized)
   // ---------------------------------------------------------------
   var audioCtx = null;
-  var audioMuted = false;
   var ambientStarted = false;
   var ambientGain = null;
+  var sfxGain = null;
   function ensureAudio(){
     if(!audioCtx){
       try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
     }
     if(audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume(); }
+    if(audioCtx && !sfxGain){
+      sfxGain = audioCtx.createGain();
+      sfxGain.gain.value = 1;
+      sfxGain.connect(audioCtx.destination);
+    }
     startAmbientNoise();
   }
   document.addEventListener('visibilitychange', function(){
@@ -764,11 +783,11 @@
     filter.type = 'lowpass'; filter.frequency.value = 550;
     ambientGain = audioCtx.createGain();
     ambientGain.gain.value = 0.045;
-    src.connect(filter); filter.connect(ambientGain); ambientGain.connect(audioCtx.destination);
+    src.connect(filter); filter.connect(ambientGain); ambientGain.connect(sfxGain);
     src.start();
   }
   function playCctvWhirr(vol){
-    if(!audioCtx || audioMuted) return;
+    if(!audioCtx) return;
     var t0 = audioCtx.currentTime;
     var osc = audioCtx.createOscillator();
     osc.type = 'triangle';
@@ -778,8 +797,29 @@
     gain.gain.setValueAtTime(0.0001, t0);
     gain.gain.linearRampToValueAtTime(vol*0.09, t0+0.05);
     gain.gain.linearRampToValueAtTime(0.0001, t0+0.4);
-    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.connect(gain); gain.connect(sfxGain);
     osc.start(t0); osc.stop(t0+0.45);
+  }
+  // short electrical buzz/crackle synced to a fluorescent tube's flicker dip
+  function playFlickerBuzz(vol){
+    if(!audioCtx) return;
+    var t0 = audioCtx.currentTime;
+    var bufSize = Math.floor(audioCtx.sampleRate * 0.12);
+    var buffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+    var data = buffer.getChannelData(0);
+    for(var i=0;i<bufSize;i++){ data[i] = (Math.random()*2-1); }
+    var noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    var filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1400;
+    filter.Q.value = 1.2;
+    var gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.linearRampToValueAtTime(vol*0.16, t0+0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.11);
+    noise.connect(filter); filter.connect(gain); gain.connect(sfxGain);
+    noise.start(t0);
   }
   function playChime(rising){
     if(!audioCtx) return;
@@ -793,35 +833,35 @@
       gain.gain.setValueAtTime(0.0001, start);
       gain.gain.linearRampToValueAtTime(0.09, start+0.03);
       gain.gain.linearRampToValueAtTime(0.0001, start+0.32);
-      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.connect(gain); gain.connect(sfxGain);
       osc.start(start); osc.stop(start+0.35);
     });
   }
   function playFootstep(vol){
-    if(!audioCtx || audioMuted) return;
+    if(!audioCtx) return;
     vol = Math.max(0, Math.min(1, vol));
     if(vol <= 0.02) return;
     var t0 = audioCtx.currentTime;
-    var bufSize = Math.floor(audioCtx.sampleRate * 0.07);
+    var bufSize = Math.floor(audioCtx.sampleRate * 0.11);
     var buffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
     var data = buffer.getChannelData(0);
-    for(var i=0;i<bufSize;i++){ data[i] = (Math.random()*2-1) * (1 - i/bufSize); }
+    for(var i=0;i<bufSize;i++){ data[i] = (Math.random()*2-1) * Math.pow(1 - i/bufSize, 1.6); }
     var noise = audioCtx.createBufferSource();
     noise.buffer = buffer;
     var filter = audioCtx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 300 + Math.random()*90;
+    filter.frequency.value = 180 + Math.random()*50;
     var gain = audioCtx.createGain();
-    gain.gain.value = vol * 0.55;
-    noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+    gain.gain.value = vol * 0.6;
+    noise.connect(filter); filter.connect(gain); gain.connect(sfxGain);
     noise.start(t0);
   }
 
   // ---------------------------------------------------------------
   // lighting (flickering fluorescents)
   // ---------------------------------------------------------------
-  scene.add(new THREE.AmbientLight(0x453c24, 0.28));
-  var hemi = new THREE.HemisphereLight(0x6b5f3e, 0x080704, 0.18);
+  scene.add(new THREE.AmbientLight(0x554a2e, 0.55));
+  var hemi = new THREE.HemisphereLight(0x9c8c58, 0x0c0a06, 0.35);
   scene.add(hemi);
 
   var lightPositions = [
@@ -837,9 +877,9 @@
   lightPositions.forEach(function(p, i){
     var fix = addFixture(p[0], p[1]);
     fixtures.push(fix);
-    var pl = new THREE.PointLight(0xfff2c8, 0.95, 8.5, 2);
+    var pl = new THREE.PointLight(0xfff2c8, 1.15, 9, 2);
     pl.position.set(p[0], WALL_H-0.35, p[1]);
-    pl.userData.base = 0.95;
+    pl.userData.base = 1.15;
     pl.userData.seed = i*1.9;
     scene.add(pl);
     lights.push(pl);
@@ -1275,6 +1315,7 @@
   function startLoop(n){
     hasReachedMid = false;
     canTrigger = true;
+    if(sfxGain && audioCtx){ sfxGain.gain.cancelScheduledValues(audioCtx.currentTime); sfxGain.gain.setValueAtTime(1, audioCtx.currentTime); }
     // final stretch (loop 6~8) gets noticeably tenser: more anomalies, jumpier lights
     tensionLevel = Math.max(0, Math.min(1, (n-4)/4));
     var chance = ANOMALY_CHANCE + tensionLevel*0.22;
@@ -1316,10 +1357,17 @@
   var failFlashEl = document.getElementById('failFlash');
   var failReasonEl = document.getElementById('failReason');
 
+  function quietResetLoop(){
+    gameState = 'blocked';
+    player.x = 24; player.z = 1.5; yaw = Math.PI; pitch = 0;
+    setTimeout(function(){ startLoop(0); }, 200);
+  }
+
   function failLoop(reason){
     if(currentAnomaly && !discovered[currentAnomaly]){ discovered[currentAnomaly] = true; saveDiscovered(); }
     gameState = 'blocked';
-    audioMuted = false;
+    if(sfxGain){ sfxGain.gain.cancelScheduledValues(audioCtx.currentTime); sfxGain.gain.setValueAtTime(1, audioCtx.currentTime); }
+    silenceActive = false;
     playChime(false);
     failReasonEl.textContent = reason;
     failFlashEl.classList.add('on');
@@ -1436,7 +1484,7 @@
   }
   document.getElementById('tapBtn2').addEventListener('click', function(){
     loopCount = 0; loopCountEl.textContent = 0;
-    scene.fog = new THREE.FogExp2(FOG_COLOR, 0.06);
+    scene.fog = new THREE.FogExp2(FOG_COLOR, 0.05);
     scene.background = new THREE.Color(FOG_COLOR);
     document.getElementById('hud').style.display = '';
     hint.style.display = '';
@@ -1451,7 +1499,7 @@
   var clock = new THREE.Clock();
   var started = false;
   var stepDist = 0;
-  var STEP_LEN = 0.62;
+  var STEP_LEN = 0.95;
   var tmpVec = new THREE.Vector3();
 
   function animate(){
@@ -1466,10 +1514,16 @@
       if(l.userData.dead){ l.intensity = 0; continue; }
       var s = l.userData.seed;
       var flick = 0.9 + Math.sin((t+s)*9)*(0.05 + tensionLevel*0.04);
-      if(Math.sin((t+s)*0.35) > flickThreshold) flick *= 0.15;
+      var dipping = Math.sin((t+s)*0.35) > flickThreshold;
+      if(dipping) flick *= 0.15;
       if(darkEndActive && END_LIGHT_IDX.indexOf(i) !== -1) flick *= 0.12;
       if(silenceActive) flick *= 0.1;
       l.intensity = l.userData.base * flick;
+      if(dipping && !l.userData.wasDipping){
+        var lDist = Math.hypot(player.x - l.position.x, player.z - l.position.z);
+        if(lDist < 13) playFlickerBuzz(Math.max(0.15, 1 - lDist/13));
+      }
+      l.userData.wasDipping = dipping;
     }
 
     // late-off light: stays lit while approaching, dies once you've passed it
@@ -1541,7 +1595,7 @@
         var reach = Math.min(1, nearestDist / 8.5);
         shadowMesh.scale.set(1, 1 + reach*2.4, 1);
         nearestIntensityRatio = nearestLight.intensity / nearestLight.userData.base;
-        shadowMat.opacity = Math.max(0, 0.85 * nearestIntensityRatio * (1 - reach*0.4));
+        shadowMat.opacity = Math.max(0, 1.0 * nearestIntensityRatio * (1 - reach*0.3));
       } else {
         shadowMat.opacity = 0;
       }
@@ -1572,12 +1626,15 @@
       if(t - loopStartTime > silenceDelay){
         silenceTriggered = true;
         silenceActive = true;
-        audioMuted = true;
-        if(ambientGain) ambientGain.gain.value = 0;
-        setTimeout(function(){
-          silenceActive = false; audioMuted = false;
-          if(ambientGain) ambientGain.gain.value = 0.045;
-        }, 2000);
+        if(sfxGain){
+          var st0 = audioCtx.currentTime;
+          sfxGain.gain.cancelScheduledValues(st0);
+          sfxGain.gain.setValueAtTime(sfxGain.gain.value, st0);
+          sfxGain.gain.linearRampToValueAtTime(0.0001, st0+0.7);
+          sfxGain.gain.setValueAtTime(0.0001, st0+1.9);
+          sfxGain.gain.linearRampToValueAtTime(1, st0+2.6);
+        }
+        setTimeout(function(){ silenceActive = false; }, 2600);
       }
     }
 
@@ -1617,7 +1674,7 @@
         var moving = moveMag > 0.0000001;
         var bob = moving ? Math.sin(t*9)*0.025 : 0;
 
-        if(moving && !audioMuted){
+        if(moving){
           stepDist += moveMag;
           if(stepDist >= STEP_LEN){
             stepDist = 0;
@@ -1645,6 +1702,7 @@
           } else if(player.x > 20 && player.z < 1.8){
             canTrigger = false;
             if(currentAnomaly !== null){ succeedLoop('이상현상 발견 · 복귀 완료'); }
+            else if(loopCount === 0){ quietResetLoop(); }
             else { failLoop('이상현상이 없었는데도 되돌아갔습니다.'); }
           }
         }
